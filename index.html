@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Pilz Logbuch v4.5</title>
+	<link rel="manifest" href="./manifest.json">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+	<link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; }
@@ -270,6 +274,16 @@
     }
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
+</script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // Wichtig: Der Pfad muss relativ zum aktuellen Ordner sein
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('Service Worker registriert für Scope:', reg.scope))
+        .catch(err => console.log('Service Worker Fehler:', err));
+    });
+  }
 </script>
 </body>
 </html>
