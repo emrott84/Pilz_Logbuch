@@ -278,10 +278,9 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Wichtig: Der Pfad muss relativ zum aktuellen Ordner sein
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('Service Worker registriert für Scope:', reg.scope))
-        .catch(err => console.log('Service Worker Fehler:', err));
+      navigator.serviceWorker.register('/Pilz_Logbuch/sw.js', { scope: '/Pilz_Logbuch/' })
+        .then(reg => console.log('SW registriert:', reg.scope))
+        .catch(err => console.error('SW Fehler:', err));
     });
   }
 </script>
