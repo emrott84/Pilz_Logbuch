@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pilz Logbuch v4.5</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; }
+        body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        #app-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+        
+        /* 1. Karte vergrößert */
+        #map { height: 55vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; }
+        
+        #ui-content { padding: 12px; background: var(--bg); }
+        .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        
+        input[type="text"], textarea { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
+        textarea { height: 60px; resize: none; }
+
+        /* 2. Kompakte Button-Zeile */
+        .action-row { display: flex; gap: 8px; align-items: center; margin-top: 5px; }
+        .icon-btn { flex: 0 0 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: #607D8B; border-radius: 8px; border: none; color: white; cursor: pointer; }
+        .save-btn { flex: 1; height: 50px; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+
+        /* Suche & Filter */
+        .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; display: flex; gap: 8px; }
+        .filter-btn { flex: 0 0 45px; height: 42px; background: var(--white); border: 1px solid #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+        .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+        #mushroom-list { list-style: none; padding: 0; margin: 0; }
+        .list-item { background: var(--white); display: flex; align-items: center; padding: 8px; margin-bottom: 6px; border-radius: 10px; cursor: pointer; }
+        .list-item img { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; margin-right: 12px; }
+
+        /* Modals */
+        .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
+        .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
+        .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
+
+        /* 3. Kompakter Detail-Eintrag */
+        .location-entry { padding: 10px; border: 1px solid #eee; margin-bottom: 8px; border-radius: 8px; background: #fff; }
+        .entry-top-line { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 5px; }
+        
+        details summary { cursor: pointer; font-size: 0.85rem; color: #666; outline: none; list-style: none; padding: 4px 0; border-top: 1px solid #fafafa; }
+        
+        .img-container { position: relative; width: 100%; aspect-ratio: 1/1; }
+        .img-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+        .del-photo { position: absolute; top: 2px; right: 2px; background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 5px; font-size: 9px; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="map"></div>
+    <div id="ui-content">
+        <div class="card">
+            <input type="text" id="input-name" placeholder="Name des Pilzes (z.B. Steinpilz)">
+            <input type="text" id="input-location" placeholder="Fundort (z.B. Mooshang)">
+            <textarea id="input-info" placeholder="Habitat, Begleitbäume..."></textarea>
+            
+            <div class="action-row">
+                <button class="icon-btn" onclick="document.getElementById('camera-input').click()" title="Kamera">📷</button>
+                <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" onchange="handleImage(this)">
+                
+                <button class="icon-btn" onclick="document.getElementById('gallery-input').click()" title="Galerie">🖼️</button>
+                <input type="file" id="gallery-input" class="hidden" accept="image/*" onchange="handleImage(this)">
+                
+                <button class="save-btn" onclick="saveEntry()">Fund Speichern</button>
+            </div>
+            <div id="preview-container" style="margin-top: 8px; display:none;">
+                <small style="color:var(--accent)">✔ Bild bereit</small>
+            </div>
+        </div>
+
+        <div class="search-bar-container">
+            <input type="text" id="search-input" placeholder="🔍 Deine Funde durchsuchen..." onkeyup="updateUI()" style="margin-bottom:0;">
+            <button id="filter-icon-btn" class="filter-btn" onclick="toggleModal('filter-modal')">📅</button>
+        </div>
+
+        <ul id="mushroom-list"></ul>
+        
+        <div style="text-align:center; padding: 20px 0;">
+            <button style="background:none; border:none; color:#999; font-size:0.75rem; text-decoration:underline;" onclick="exportData()">Backup exportieren</button>
+            <button style="background:none; border:none; color:#999; font-size:0.75rem; text-decoration:underline; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
+            <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
+        </div>
+    </div>
+</div>
+
+<div id="filter-modal" class="full-modal">
+    <div class="modal-header"><h3>Zeitraum wählen</h3><button onclick="toggleModal('filter-modal')">✕</button></div>
+    <div class="tab-content">
+        <input type="date" id="filter-start"><input type="date" id="filter-end">
+        <div class="action-row"><button class="icon-btn" style="background:#ccc" onclick="resetFilter()">↺</button><button class="save-btn" onclick="applyFilter()">Anwenden</button></div>
+    </div>
+</div>
+
+<div id="detail-modal" class="full-modal">
+    <div class="modal-header"><h3 id="modal-title" style="margin:0;">Details</h3><button onclick="toggleModal('detail-modal')">✕</button></div>
+    <div style="display:flex; border-bottom:1px solid #ccc;">
+        <button id="tab-btn-history" style="flex:1; padding:12px; background:none; border:none; border-bottom:3px solid var(--accent);" onclick="switchTab('history')">📍 Liste</button>
+        <button id="tab-btn-photos" style="flex:1; padding:12px; background:none; border:none;" onclick="switchTab('photos')">📷 Bilder</button>
+    </div>
+    <div id="detail-history" class="tab-content"></div>
+    <div id="detail-photos" class="tab-content hidden"><div id="image-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;"></div></div>
+</div>
+
+<div id="lightbox" onclick="this.style.display='none'" style="position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:3000; display:none; align-items:center; justify-content:center;"><img id="lightboxImg" style="max-width:95%; max-height:95%;"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    let db, entries = [], markersOnMap = [], currentImage = null, selectedLatLng = null, tempMarker = null;
+    let activeFilter = { start: null, end: null };
+
+    // --- DB & CORE (Minimal angepasst für UI-Changes) ---
+    async function openDB() {
+        return new Promise(res => {
+            const req = indexedDB.open('PilzLogDB_v4', 1);
+            req.onsuccess = e => { db = e.target.result; res(); };
+            req.onupgradeneeded = e => { const d = e.target.result; d.createObjectStore('entries', {keyPath:'id'}); d.createObjectStore('photos', {keyPath:'id'}); };
+        });
+    }
+    const idb = {
+        getAll: s => new Promise(r => { const req = db.transaction(s).objectStore(s).getAll(); req.onsuccess = () => r(req.result); }),
+        get: (s, id) => new Promise(r => { const req = db.transaction(s).objectStore(s).get(id); req.onsuccess = () => r(req.result); }),
+        put: (s, o) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).put(o); req.onsuccess = () => r(); }),
+        del: (s, id) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).delete(id); req.onsuccess = () => r(); })
+    };
+
+    // --- MAP ---
+    let map = L.map('map').setView([50.297, 8.266], 13);
+    const layers = {
+        "Karte": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
+        "Satellit": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
+        "Topo": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')
+    };
+    layers["Karte"].addTo(map); L.control.layers(layers).addTo(map);
+
+    map.on('click', e => {
+        selectedLatLng = e.latlng;
+        if (tempMarker) map.removeLayer(tempMarker);
+        tempMarker = L.marker(selectedLatLng).addTo(map).bindPopup("Ort gewählt").openPopup();
+    });
+
+    // --- UI LOGIC ---
+    function handleImage(input) {
+        if (input.files[0]) {
+            const r = new FileReader();
+            r.onload = e => { currentImage = e.target.result; document.getElementById('preview-container').style.display = 'block'; };
+            r.readAsDataURL(input.files[0]);
+        }
+    }
+
+    async function saveEntry() {
+        const name = document.getElementById('input-name').value;
+        if (!name || !selectedLatLng) return alert("Name & Ort auf Karte wählen!");
+        const id = "e_" + Date.now();
+        let photoId = null, thumb = "https://via.placeholder.com/150?text=Pilz";
+        if (currentImage) {
+            photoId = "p_" + Date.now();
+            await idb.put('photos', { id: photoId, full: currentImage });
+            thumb = await createThumb(currentImage);
+        }
+        await idb.put('entries', { id, name, location: document.getElementById('input-location').value, info: document.getElementById('input-info').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, ts: Date.now(), photoId, thumb });
+        location.reload();
+    }
+
+    async function createThumb(base64) {
+        return new Promise(r => {
+            const img = new Image(); img.src = base64;
+            img.onload = () => {
+                const c = document.createElement('canvas'); const ctx = c.getContext('2d');
+                c.width = 100; c.height = 100; ctx.drawImage(img,0,0,100,100); r(c.toDataURL('image/jpeg', 0.6));
+            };
+        });
+    }
+
+    function updateUI() {
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const filtered = entries.filter(e => {
+            return e.name.toLowerCase().includes(query) && 
+                   (!activeFilter.start || e.ts >= activeFilter.start) && 
+                   (!activeFilter.end || e.ts <= activeFilter.end);
+        });
+
+        markersOnMap.forEach(m => map.removeLayer(m));
+        markersOnMap = filtered.map(e => L.marker([e.lat, e.lng]).addTo(map).bindPopup(`<b>${e.name}</b>`));
+
+        const listEl = document.getElementById('mushroom-list');
+        listEl.innerHTML = '';
+        const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
+        Object.keys(groups).sort().forEach(name => {
+            const g = groups[name];
+            const li = document.createElement('li'); li.className = 'list-item';
+            li.innerHTML = `<img src="${g[g.length-1].thumb}"> <div><strong>${name}</strong><br><small>${g.length} Funde</small></div>`;
+            li.onclick = () => openDetail(name, g);
+            listEl.appendChild(li);
+        });
+    }
+
+    async function openDetail(name, group) {
+        document.getElementById('modal-title').innerText = name;
+        const hist = document.getElementById('detail-history');
+        const grid = document.getElementById('image-grid');
+        hist.innerHTML = ''; grid.innerHTML = '';
+
+        group.sort((a,b) => b.ts - a.ts).forEach(async e => {
+            const div = document.createElement('div');
+            div.className = 'location-entry';
+            // Kompakte Zeile: Ort links, Datum rechts
+            div.innerHTML = `
+                <div class="entry-top-line" onclick="jumpTo(${e.lat}, ${e.lng})">
+                    <strong>📍 ${e.location || 'Wald'}</strong>
+                    <span style="color:#888; font-size:0.8rem;">${new Date(e.ts).toLocaleDateString('de-DE')}</span>
+                </div>
+                <details>
+                    <summary>Info & Edit ▾</summary>
+                    <textarea id="edit-${e.id}" style="font-size:0.8rem; height:50px; margin-top:5px;">${e.info || ''}</textarea>
+                    <button class="save-btn" style="height:30px; font-size:0.8rem;" onclick="updateEntry('${e.id}')">Speichern</button>
+                </details>
+            `;
+            hist.appendChild(div);
+
+            if (e.photoId) {
+                const p = await idb.get('photos', e.photoId);
+                if (p) {
+                    const c = document.createElement('div'); c.className = 'img-container';
+                    c.innerHTML = `<img src="${p.full}" onclick="showLightbox('${p.full}')"><button class="del-photo" onclick="deleteImg('${e.id}','${e.photoId}')">X</button>`;
+                    grid.appendChild(c);
+                }
+            }
+        });
+        toggleModal('detail-modal');
+    }
+
+    // --- HELPERS (REST) ---
+    async function updateEntry(id) {
+        const e = entries.find(x => x.id === id); e.info = document.getElementById('edit-'+id).value;
+        await idb.put('entries', e); alert("Gespeichert");
+    }
+    async function deleteImg(eid, pid) {
+        if(confirm("Löschen?")) { await idb.del('photos', pid); const e = entries.find(x=>x.id===eid); e.photoId=null; await idb.put('entries',e); location.reload(); }
+    }
+    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
+    function switchTab(t) { 
+        document.getElementById('detail-history').classList.toggle('hidden', t!=='history');
+        document.getElementById('detail-photos').classList.toggle('hidden', t!=='photos');
+        document.getElementById('tab-btn-history').style.borderBottom = t==='history' ? '3px solid var(--accent)' : 'none';
+        document.getElementById('tab-btn-photos').style.borderBottom = t==='photos' ? '3px solid var(--accent)' : 'none';
+    }
+    function jumpTo(lat, lng) { toggleModal('detail-modal'); document.getElementById('app-container').scrollTop = 0; map.flyTo([lat, lng], 17); }
+    function showLightbox(s) { document.getElementById('lightboxImg').src = s; document.getElementById('lightbox').style.display='flex'; }
+    function resetFilter() { activeFilter = {start:null, end:null}; document.getElementById('filter-icon-btn').classList.remove('active'); updateUI(); toggleModal('filter-modal'); }
+    function applyFilter() {
+        const s = document.getElementById('filter-start').value, e = document.getElementById('filter-end').value;
+        activeFilter = { start: s?new Date(s).getTime():null, end: e?new Date(e).setHours(23,59,59):null };
+        document.getElementById('filter-icon-btn').classList.toggle('active', !!(s||e)); updateUI(); toggleModal('filter-modal');
+    }
+    async function exportData() {
+        const e = await idb.getAll('entries'), p = await idb.getAll('photos');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `pilze_backup.json`; a.click();
+    }
+    async function importData(i) {
+        const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); for(let y of d.photos) await idb.put('photos', y); location.reload(); };
+        r.readAsText(i.files[0]);
+    }
+
+    window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
+</script>
+</body>
+</html>
