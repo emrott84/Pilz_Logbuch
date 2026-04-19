@@ -1,20 +1,20 @@
 {
   "name": "Pilz Logbuch Profi",
   "short_name": "PilzLog",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/Pilz_Logbuch/index.html",
+  "scope": "/Pilz_Logbuch/",
   "display": "standalone",
   "background_color": "#f5f0e8",
   "theme_color": "#3b5940",
   "description": "Dein mobiles Pilztagebuch für den Wald.",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "icon_192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "icon_512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
