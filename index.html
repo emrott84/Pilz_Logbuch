@@ -54,6 +54,23 @@
         .del-photo { position: absolute; top: 2px; right: 2px; background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 5px; font-size: 9px; }
 
         .hidden { display: none; }
+    .gps-button {
+        position: fixed;
+        bottom: 85px; /* Etwas über dem Log-Button */
+        right: 20px;
+        z-index: 1000;
+        background: white;
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        cursor: pointer;
+        font-size: 20px;
+        border: 2px solid #4a7c44;
+    }
     </style>
 </head>
 <body>
@@ -75,6 +92,9 @@
                 
                 <button class="save-btn" onclick="saveEntry()">Fund Speichern</button>
             </div>
+
+<div class="gps-button" onclick="locateUser()">🎯</div>
+
             <div id="preview-container" style="margin-top: 8px; display:none;">
                 <small style="color:var(--accent)">✔ Bild bereit</small>
             </div>
@@ -159,19 +179,45 @@
         }
     }
 
-    async function saveEntry() {
-        const name = document.getElementById('input-name').value;
-        if (!name || !selectedLatLng) return alert("Name & Ort auf Karte wählen!");
-        const id = "e_" + Date.now();
-        let photoId = null, thumb = "https://via.placeholder.com/150?text=Pilz";
-        if (currentImage) {
-            photoId = "p_" + Date.now();
-            await idb.put('photos', { id: photoId, full: currentImage });
-            thumb = await createThumb(currentImage);
-        }
-        await idb.put('entries', { id, name, location: document.getElementById('input-location').value, info: document.getElementById('input-info').value, lat: selectedLatLng.lat, lng: selectedLatLng.lng, ts: Date.now(), photoId, thumb });
-        location.reload();
-    }
+    // Diese Funktion neu hinzufügen (z.B. über saveEntry)
+function locateUser() {
+    map.locate({setView: true, maxZoom: 17});
+}
+
+// Die komplette saveEntry ersetzen:
+async function saveEntry() {
+    const name = document.getElementById('p-name').value;
+    const info = document.getElementById('p-info').value;
+    
+    if(!name) { alert("Bitte Namen eingeben"); return; }
+
+    // Wir holen uns die Live-Position beim Speichern
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const newEntry = {
+            id: Date.now().toString(),
+            name: name,
+            info: info,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            ts: Date.now(),
+            images: currentFiles // Falls Bilder-Logik vorhanden
+        };
+
+        await db.put('entries', newEntry);
+        
+        // Reset & Schließen
+        document.getElementById('p-name').value = '';
+        document.getElementById('p-info').value = '';
+        currentFiles = [];
+        toggleModal('log-modal');
+        
+        // Karte aktualisieren
+        loadEntries();
+    }, (err) => {
+        alert("GPS Fehler: " + err.message);
+    }, {enableHighAccuracy: true, timeout: 5000});
+}
+
 
     async function createThumb(base64) {
         return new Promise(r => {
