@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pilz Logbuch v4.5</title>
-	<link rel="manifest" href="./manifest.json">
-	<meta name="apple-mobile-web-app-capable" content="yes">
-	<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-	<link rel="apple-touch-icon" href="icon-192.png">
+    <title>Pilz Logbuch v4.7</title>
+    <link rel="manifest" href="./manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; }
@@ -15,139 +15,114 @@
         
         #app-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
         
-        /* 1. Karte vergrößert */
-        #map { height: 55vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; }
+        #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; }
         
-        #ui-content { padding: 12px; background: var(--bg); }
+        /* Der Zentrier-Button: Jetzt sicher positioniert */
+        .gps-fab {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-size: 20px;
+            border: 1px solid #ccc;
+        }
+
+        #ui-content { padding: 12px; background: var(--bg); flex: 1; }
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
         
         input[type="text"], textarea { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
         textarea { height: 60px; resize: none; }
 
-        /* 2. Kompakte Button-Zeile */
         .action-row { display: flex; gap: 8px; align-items: center; margin-top: 5px; }
         .icon-btn { flex: 0 0 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: #607D8B; border-radius: 8px; border: none; color: white; cursor: pointer; }
         .save-btn { flex: 1; height: 50px; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
 
-        /* Suche & Filter */
         .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; display: flex; gap: 8px; }
-        .filter-btn { flex: 0 0 45px; height: 42px; background: var(--white); border: 1px solid #ccc; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
-        .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-
         #mushroom-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { background: var(--white); display: flex; align-items: center; padding: 8px; margin-bottom: 6px; border-radius: 10px; cursor: pointer; }
+        .list-item { background: var(--white); display: flex; align-items: center; padding: 8px; margin-bottom: 6px; border-radius: 10px; cursor: pointer; border-left: 5px solid var(--primary); }
         .list-item img { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; margin-right: 12px; }
 
-        /* Modals */
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
         .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
 
-        /* 3. Kompakter Detail-Eintrag */
-        .location-entry { padding: 10px; border: 1px solid #eee; margin-bottom: 8px; border-radius: 8px; background: #fff; }
-        .entry-top-line { display: flex; justify-content: space-between; align-items: center; font-size: 0.9rem; margin-bottom: 5px; }
-        
-        details summary { cursor: pointer; font-size: 0.85rem; color: #666; outline: none; list-style: none; padding: 4px 0; border-top: 1px solid #fafafa; }
-        
-        .img-container { position: relative; width: 100%; aspect-ratio: 1/1; }
-        .img-container img { width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
-        .del-photo { position: absolute; top: 2px; right: 2px; background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 5px; font-size: 9px; }
-
+        .wiki-link { display: inline-flex; align-items: center; text-decoration: none; background: #e1e8e1; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; margin-left: 10px; border: 1px solid #c5d1c5; }
         .hidden { display: none; }
-    .gps-button {
-        position: fixed;
-        bottom: 85px; /* Etwas über dem Log-Button */
-        right: 20px;
-        z-index: 1000;
-        background: white;
-        width: 45px;
-        height: 45px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-        cursor: pointer;
-        font-size: 20px;
-        border: 2px solid #4a7c44;
-    }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div id="map"></div>
+    <div id="map">
+        <div class="gps-fab" onclick="locateUser()" title="Standort zentrieren">🎯</div>
+    </div>
+
     <div id="ui-content">
         <div class="card">
-            <input type="text" id="input-name" placeholder="Name des Pilzes (z.B. Steinpilz)">
-            <input type="text" id="input-location" placeholder="Fundort (z.B. Mooshang)">
+            <input type="text" id="input-name" placeholder="Name (z.B. Steinpilz)">
+            <input type="text" id="input-location" placeholder="Ort (z.B. Mooshang)">
             <textarea id="input-info" placeholder="Habitat, Begleitbäume..."></textarea>
             
             <div class="action-row">
-                <button class="icon-btn" onclick="document.getElementById('camera-input').click()" title="Kamera">📷</button>
+                <button class="icon-btn" onclick="document.getElementById('camera-input').click()">📷</button>
                 <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" onchange="handleImage(this)">
                 
-                <button class="icon-btn" onclick="document.getElementById('gallery-input').click()" title="Galerie">🖼️</button>
+                <button class="icon-btn" onclick="document.getElementById('gallery-input').click()">🖼️</button>
                 <input type="file" id="gallery-input" class="hidden" accept="image/*" onchange="handleImage(this)">
                 
-                <button class="save-btn" onclick="saveEntry()">Fund Speichern</button>
+                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Fund mit GPS speichern</button>
             </div>
 
-<div class="gps-button" onclick="locateUser()">🎯</div>
-
             <div id="preview-container" style="margin-top: 8px; display:none;">
-                <small style="color:var(--accent)">✔ Bild bereit</small>
+                <small style="color:var(--accent)">✔ Foto bereit</small>
             </div>
         </div>
 
         <div class="search-bar-container">
-            <input type="text" id="search-input" placeholder="🔍 Deine Funde durchsuchen..." onkeyup="updateUI()" style="margin-bottom:0;">
-            <button id="filter-icon-btn" class="filter-btn" onclick="toggleModal('filter-modal')">📅</button>
+            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0; flex:1;">
         </div>
 
         <ul id="mushroom-list"></ul>
         
         <div style="text-align:center; padding: 20px 0;">
-            <button style="background:none; border:none; color:#999; font-size:0.75rem; text-decoration:underline;" onclick="exportData()">Backup exportieren</button>
-            <button style="background:none; border:none; color:#999; font-size:0.75rem; text-decoration:underline; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
+            <button style="background:none; border:none; color:#999; font-size:0.7rem;" onclick="exportData()">Backup</button>
+            <button style="background:none; border:none; color:#999; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
             <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
 </div>
 
-<div id="filter-modal" class="full-modal">
-    <div class="modal-header"><h3>Zeitraum wählen</h3><button onclick="toggleModal('filter-modal')">✕</button></div>
-    <div class="tab-content">
-        <input type="date" id="filter-start"><input type="date" id="filter-end">
-        <div class="action-row"><button class="icon-btn" style="background:#ccc" onclick="resetFilter()">↺</button><button class="save-btn" onclick="applyFilter()">Anwenden</button></div>
-    </div>
-</div>
-
 <div id="detail-modal" class="full-modal">
     <div class="modal-header"><h3 id="modal-title" style="margin:0;">Details</h3><button onclick="toggleModal('detail-modal')">✕</button></div>
-    <div style="display:flex; border-bottom:1px solid #ccc;">
-        <button id="tab-btn-history" style="flex:1; padding:12px; background:none; border:none; border-bottom:3px solid var(--accent);" onclick="switchTab('history')">📍 Liste</button>
-        <button id="tab-btn-photos" style="flex:1; padding:12px; background:none; border:none;" onclick="switchTab('photos')">📷 Bilder</button>
-    </div>
     <div id="detail-history" class="tab-content"></div>
     <div id="detail-photos" class="tab-content hidden"><div id="image-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;"></div></div>
 </div>
 
-<div id="lightbox" onclick="this.style.display='none'" style="position:fixed; inset:0; background:rgba(0,0,0,0.9); z-index:3000; display:none; align-items:center; justify-content:center;"><img id="lightboxImg" style="max-width:95%; max-height:95%;"></div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    let db, entries = [], markersOnMap = [], currentImage = null, selectedLatLng = null, tempMarker = null;
-    let activeFilter = { start: null, end: null };
+    let db, entries = [], markersOnMap = [], currentImage = null;
 
-    // --- DB & CORE (Minimal angepasst für UI-Changes) ---
     async function openDB() {
         return new Promise(res => {
             const req = indexedDB.open('PilzLogDB_v4', 1);
             req.onsuccess = e => { db = e.target.result; res(); };
-            req.onupgradeneeded = e => { const d = e.target.result; d.createObjectStore('entries', {keyPath:'id'}); d.createObjectStore('photos', {keyPath:'id'}); };
+            req.onupgradeneeded = e => { 
+                const d = e.target.result; 
+                d.createObjectStore('entries', {keyPath:'id'}); 
+                d.createObjectStore('photos', {keyPath:'id'}); 
+            };
         });
     }
+
     const idb = {
         getAll: s => new Promise(r => { const req = db.transaction(s).objectStore(s).getAll(); req.onsuccess = () => r(req.result); }),
         get: (s, id) => new Promise(r => { const req = db.transaction(s).objectStore(s).get(id); req.onsuccess = () => r(req.result); }),
@@ -157,46 +132,35 @@
 
     // --- MAP ---
     let map = L.map('map').setView([50.297, 8.266], 13);
-    const layers = {
-        "Karte": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-        "Satellit": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
-        "Topo": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')
-    };
-    layers["Karte"].addTo(map); L.control.layers(layers).addTo(map);
-
-    map.on('click', e => {
-        selectedLatLng = e.latlng;
-        if (tempMarker) map.removeLayer(tempMarker);
-        tempMarker = L.marker(selectedLatLng).addTo(map).bindPopup("Ort gewählt").openPopup();
-    });
-
-        // --- UI LOGIC ---
-    function handleImage(input) {
-        if (input.files[0]) {
-            const r = new FileReader();
-            r.onload = e => { 
-                currentImage = e.target.result; // Wir nutzen currentImage konsistent
-                document.getElementById('preview-container').style.display = 'block'; 
-            };
-            r.readAsDataURL(input.files[0]);
-        }
-    }
+    L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
     function locateUser() {
         map.locate({setView: true, maxZoom: 17});
     }
 
+    // --- LOGIC ---
+    function handleImage(input) {
+        if (input.files[0]) {
+            const r = new FileReader();
+            r.onload = e => { currentImage = e.target.result; document.getElementById('preview-container').style.display = 'block'; };
+            r.readAsDataURL(input.files[0]);
+        }
+    }
+
     async function saveEntry() {
-        // IDs korrigiert (input-name statt p-name)
         const name = document.getElementById('input-name').value;
-        const locationName = document.getElementById('input-location').value;
+        const loc = document.getElementById('input-location').value;
         const info = document.getElementById('input-info').value;
-        
+        const btn = document.getElementById('main-save-btn');
+
         if(!name) { alert("Bitte Namen eingeben"); return; }
+        
+        btn.innerText = "⌛ Ort wird ermittelt...";
+        btn.disabled = true;
 
         navigator.geolocation.getCurrentPosition(async (pos) => {
             const photoId = currentImage ? Date.now().toString() + '_p' : null;
-            let thumb = 'icon-192.png'; // Fallback
+            let thumb = 'icon-192.png';
 
             if (currentImage) {
                 await idb.put('photos', { id: photoId, full: currentImage });
@@ -206,7 +170,7 @@
             const newEntry = {
                 id: Date.now().toString(),
                 name: name,
-                location: locationName || 'Wald',
+                location: loc || 'Wald',
                 info: info,
                 lat: pos.coords.latitude,
                 lng: pos.coords.longitude,
@@ -217,23 +181,24 @@
 
             await idb.put('entries', newEntry);
             
-            // UI Reset
+            // Reset
             document.getElementById('input-name').value = '';
             document.getElementById('input-location').value = '';
             document.getElementById('input-info').value = '';
             currentImage = null;
             document.getElementById('preview-container').style.display = 'none';
-            
-            // Daten neu laden und UI updaten
+            btn.innerText = "📍 Fund mit GPS speichern";
+            btn.disabled = false;
+
             entries = await idb.getAll('entries');
             updateUI();
-            alert("Fund mit GPS gespeichert!");
+            alert("Erfolgreich gespeichert!");
         }, (err) => {
-            alert("GPS Fehler: " + err.message + ". Hast du den Standortzugriff erlaubt?");
-        }, {enableHighAccuracy: true, timeout: 5000});
+            btn.innerText = "📍 Fund mit GPS speichern";
+            btn.disabled = false;
+            alert("GPS Fehler: " + err.message);
+        }, {enableHighAccuracy: true, timeout: 8000});
     }
-
-
 
     async function createThumb(base64) {
         return new Promise(r => {
@@ -247,11 +212,7 @@
 
     function updateUI() {
         const query = document.getElementById('search-input').value.toLowerCase();
-        const filtered = entries.filter(e => {
-            return e.name.toLowerCase().includes(query) && 
-                   (!activeFilter.start || e.ts >= activeFilter.start) && 
-                   (!activeFilter.end || e.ts <= activeFilter.end);
-        });
+        const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
 
         markersOnMap.forEach(m => map.removeLayer(m));
         markersOnMap = filtered.map(e => L.marker([e.lat, e.lng]).addTo(map).bindPopup(`<b>${e.name}</b>`));
@@ -259,6 +220,7 @@
         const listEl = document.getElementById('mushroom-list');
         listEl.innerHTML = '';
         const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
+        
         Object.keys(groups).sort().forEach(name => {
             const g = groups[name];
             const li = document.createElement('li'); li.className = 'list-item';
@@ -268,83 +230,70 @@
         });
     }
 
+    function openWiki(name) {
+        window.open(`https://www.google.com/search?q=site:123pilzsuche.de+${encodeURIComponent(name)}`, '_blank');
+    }
+
     async function openDetail(name, group) {
-        document.getElementById('modal-title').innerText = name;
+        const titleEl = document.getElementById('modal-title');
+        titleEl.innerHTML = `${name} <a href="#" class="wiki-link" onclick="openWiki('${name}'); return false;">📖 Wiki</a>`;
+        
         const hist = document.getElementById('detail-history');
-        const grid = document.getElementById('image-grid');
-        hist.innerHTML = ''; grid.innerHTML = '';
+        hist.innerHTML = '';
 
         group.sort((a,b) => b.ts - a.ts).forEach(async e => {
             const div = document.createElement('div');
-            div.className = 'location-entry';
-            // Kompakte Zeile: Ort links, Datum rechts
+            div.style.padding = "10px"; div.style.borderBottom = "1px solid #eee";
             div.innerHTML = `
-                <div class="entry-top-line" onclick="jumpTo(${e.lat}, ${e.lng})">
-                    <strong>📍 ${e.location || 'Wald'}</strong>
-                    <span style="color:#888; font-size:0.8rem;">${new Date(e.ts).toLocaleDateString('de-DE')}</span>
+                <div style="display:flex; justify-content:space-between;">
+                    <strong>📍 ${e.location}</strong>
+                    <small>${new Date(e.ts).toLocaleDateString()}</small>
                 </div>
-                <details>
-                    <summary>Info & Edit ▾</summary>
-                    <textarea id="edit-${e.id}" style="font-size:0.8rem; height:50px; margin-top:5px;">${e.info || ''}</textarea>
-                    <button class="save-btn" style="height:30px; font-size:0.8rem;" onclick="updateEntry('${e.id}')">Speichern</button>
-                </details>
+                <div style="font-size:0.8rem; color:#666; margin-top:4px;">${e.info || ''}</div>
+                <button style="margin-top:5px; font-size:0.7rem;" onclick="jumpTo(${e.lat}, ${e.lng})">Auf Karte zeigen</button>
             `;
             hist.appendChild(div);
-
-            if (e.photoId) {
-                const p = await idb.get('photos', e.photoId);
-                if (p) {
-                    const c = document.createElement('div'); c.className = 'img-container';
-                    c.innerHTML = `<img src="${p.full}" onclick="showLightbox('${p.full}')"><button class="del-photo" onclick="deleteImg('${e.id}','${e.photoId}')">X</button>`;
-                    grid.appendChild(c);
-                }
-            }
         });
         toggleModal('detail-modal');
     }
 
-    // --- HELPERS (REST) ---
-    async function updateEntry(id) {
-        const e = entries.find(x => x.id === id); e.info = document.getElementById('edit-'+id).value;
-        await idb.put('entries', e); alert("Gespeichert");
+    function toggleModal(id) { 
+        const m = document.getElementById(id); 
+        m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; 
     }
-    async function deleteImg(eid, pid) {
-        if(confirm("Löschen?")) { await idb.del('photos', pid); const e = entries.find(x=>x.id===eid); e.photoId=null; await idb.put('entries',e); location.reload(); }
+
+    function jumpTo(lat, lng) { 
+        toggleModal('detail-modal'); 
+        map.flyTo([lat, lng], 17); 
     }
-    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
-    function switchTab(t) { 
-        document.getElementById('detail-history').classList.toggle('hidden', t!=='history');
-        document.getElementById('detail-photos').classList.toggle('hidden', t!=='photos');
-        document.getElementById('tab-btn-history').style.borderBottom = t==='history' ? '3px solid var(--accent)' : 'none';
-        document.getElementById('tab-btn-photos').style.borderBottom = t==='photos' ? '3px solid var(--accent)' : 'none';
-    }
-    function jumpTo(lat, lng) { toggleModal('detail-modal'); document.getElementById('app-container').scrollTop = 0; map.flyTo([lat, lng], 17); }
-    function showLightbox(s) { document.getElementById('lightboxImg').src = s; document.getElementById('lightbox').style.display='flex'; }
-    function resetFilter() { activeFilter = {start:null, end:null}; document.getElementById('filter-icon-btn').classList.remove('active'); updateUI(); toggleModal('filter-modal'); }
-    function applyFilter() {
-        const s = document.getElementById('filter-start').value, e = document.getElementById('filter-end').value;
-        activeFilter = { start: s?new Date(s).getTime():null, end: e?new Date(e).setHours(23,59,59):null };
-        document.getElementById('filter-icon-btn').classList.toggle('active', !!(s||e)); updateUI(); toggleModal('filter-modal');
-    }
+
     async function exportData() {
         const e = await idb.getAll('entries'), p = await idb.getAll('photos');
-        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `pilze_backup.json`; a.click();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})]));
+        a.download = `pilz_backup.json`; a.click();
     }
+
     async function importData(i) {
-        const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); for(let y of d.photos) await idb.put('photos', y); location.reload(); };
+        const r = new FileReader();
+        r.onload = async e => {
+            const d = JSON.parse(e.target.result);
+            for(let x of d.entries) await idb.put('entries', x);
+            for(let y of d.photos) await idb.put('photos', y);
+            location.reload();
+        };
         r.readAsText(i.files[0]);
     }
 
-    window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
-</script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/Pilz_Logbuch/sw.js')
-        .then(reg => console.log('SW registriert:', reg.scope))
-        .catch(err => console.error('SW Fehler:', err));
-    });
-  }
+    window.onload = async () => { 
+        await openDB(); 
+        entries = await idb.getAll('entries'); 
+        updateUI(); 
+    };
+
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js');
+    }
 </script>
 </body>
 </html>
