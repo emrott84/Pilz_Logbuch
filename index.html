@@ -18,23 +18,24 @@
         #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; }
         
         /* Der Zentrier-Button: Jetzt sicher positioniert */
-        .gps-fab {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-            cursor: pointer;
-            font-size: 20px;
-            border: 1px solid #ccc;
-        }
+       .gps-fab {
+    position: absolute;
+    bottom: 50px; /* Hoch genug über dem Leaflet-Logo */
+    right: 10px;
+    z-index: 1000;
+    background: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    cursor: pointer;
+    font-size: 20px;
+    border: 1px solid #ccc;
+}
+
 
         #ui-content { padding: 12px; background: var(--bg); flex: 1; }
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
@@ -135,8 +136,37 @@
     L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
     function locateUser() {
-        map.locate({setView: true, maxZoom: 17});
-    }
+    const btn = document.querySelector('.gps-fab');
+    btn.innerText = "⌛"; // Visuelles Feedback
+
+    navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        
+        // Karte fliegen und Button zurücksetzen
+        map.flyTo([lat, lng], 17);
+        btn.innerText = "🎯";
+        
+        // Optional: Kleiner blauer Punkt für den aktuellen Standort
+        if (window.userMarker) {
+            window.userMarker.setLatLng([lat, lng]);
+        } else {
+            window.userMarker = L.circleMarker([lat, lng], {
+                color: '#3b5940',
+                fillColor: '#4CAF50',
+                fillOpacity: 0.8,
+                radius: 8
+            }).addTo(map).bindPopup("Du bist hier");
+        }
+    }, (err) => {
+        btn.innerText = "🎯";
+        alert("Standort konnte nicht ermittelt werden: " + err.message);
+    }, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0 // WICHTIG: Verhindert, dass er alte (gecashte) Daten nutzt
+    });
+}
 
     // --- LOGIC ---
     function handleImage(input) {
