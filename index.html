@@ -170,53 +170,69 @@
         tempMarker = L.marker(selectedLatLng).addTo(map).bindPopup("Ort gewählt").openPopup();
     });
 
-    // --- UI LOGIC ---
+        // --- UI LOGIC ---
     function handleImage(input) {
         if (input.files[0]) {
             const r = new FileReader();
-            r.onload = e => { currentImage = e.target.result; document.getElementById('preview-container').style.display = 'block'; };
+            r.onload = e => { 
+                currentImage = e.target.result; // Wir nutzen currentImage konsistent
+                document.getElementById('preview-container').style.display = 'block'; 
+            };
             r.readAsDataURL(input.files[0]);
         }
     }
 
-    // Diese Funktion neu hinzufügen (z.B. über saveEntry)
-function locateUser() {
-    map.locate({setView: true, maxZoom: 17});
-}
+    function locateUser() {
+        map.locate({setView: true, maxZoom: 17});
+    }
 
-// Die komplette saveEntry ersetzen:
-async function saveEntry() {
-    const name = document.getElementById('p-name').value;
-    const info = document.getElementById('p-info').value;
-    
-    if(!name) { alert("Bitte Namen eingeben"); return; }
-
-    // Wir holen uns die Live-Position beim Speichern
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-        const newEntry = {
-            id: Date.now().toString(),
-            name: name,
-            info: info,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            ts: Date.now(),
-            images: currentFiles // Falls Bilder-Logik vorhanden
-        };
-
-        await db.put('entries', newEntry);
+    async function saveEntry() {
+        // IDs korrigiert (input-name statt p-name)
+        const name = document.getElementById('input-name').value;
+        const locationName = document.getElementById('input-location').value;
+        const info = document.getElementById('input-info').value;
         
-        // Reset & Schließen
-        document.getElementById('p-name').value = '';
-        document.getElementById('p-info').value = '';
-        currentFiles = [];
-        toggleModal('log-modal');
-        
-        // Karte aktualisieren
-        loadEntries();
-    }, (err) => {
-        alert("GPS Fehler: " + err.message);
-    }, {enableHighAccuracy: true, timeout: 5000});
-}
+        if(!name) { alert("Bitte Namen eingeben"); return; }
+
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const photoId = currentImage ? Date.now().toString() + '_p' : null;
+            let thumb = 'icon-192.png'; // Fallback
+
+            if (currentImage) {
+                await idb.put('photos', { id: photoId, full: currentImage });
+                thumb = await createThumb(currentImage);
+            }
+
+            const newEntry = {
+                id: Date.now().toString(),
+                name: name,
+                location: locationName || 'Wald',
+                info: info,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                ts: Date.now(),
+                photoId: photoId,
+                thumb: thumb
+            };
+
+            await idb.put('entries', newEntry);
+            
+            // UI Reset
+            document.getElementById('input-name').value = '';
+            document.getElementById('input-location').value = '';
+            document.getElementById('input-info').value = '';
+            currentImage = null;
+            document.getElementById('preview-container').style.display = 'none';
+            
+            // Daten neu laden und UI updaten
+            entries = await idb.getAll('entries');
+            updateUI();
+            alert("Fund mit GPS gespeichert!");
+        }, (err) => {
+            alert("GPS Fehler: " + err.message + ". Hast du den Standortzugriff erlaubt?");
+        }, {enableHighAccuracy: true, timeout: 5000});
+    }
+
 
 
     async function createThumb(base64) {
