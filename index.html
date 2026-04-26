@@ -154,9 +154,6 @@
 		}
 		.lb-prev { left: 0; border-radius: 0 8px 8px 0; }
 		.lb-next { right: 0; border-radius: 8px 0 0 8px; }
-		
-		.icon-btn { opacity: 0.3; transition: opacity 0.2s; }
-		.icon-btn.active { opacity: 1; }
     </style>
 </head>
 <body>
@@ -191,11 +188,9 @@
             <div id="preview-container" style="margin-top: 8px; display:none;"><small style="color:var(--accent)">✔ Foto bereit</small></div>
         </div>
 
-        <div class="search-bar-container" style="display: flex; gap: 8px; align-items: center;">
-			<input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="flex: 1; margin: 0;">
-			<button id="filter-fund" class="icon-btn active" onclick="toggleFilter('fund')" style="flex: 0 0 44px; height: 44px; background: var(--primary);">🍄</button>
-			<button id="filter-spot" class="icon-btn active" onclick="toggleFilter('spot')" style="flex: 0 0 44px; height: 44px; background: #607D8B;">📍</button>
-		</div>
+        <div class="search-bar-container">
+            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0;">
+        </div>
 
         <ul id="mushroom-list"></ul>
         <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
@@ -232,7 +227,6 @@
     let db, entries = [], markersOnMap = [], currentImage = null;
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
-	let activeFilters = { fund: true, spot: true };
 
     async function openDB() {
         return new Promise(res => {
@@ -277,71 +271,48 @@
     }
 
     async function saveEntry() {
-		// 1. Werte aus den Feldern holen
-		const typeSelected = document.querySelector('input[name="entry-type"]:checked').value;
-		const isSpot = typeSelected === 'spot';
-		let name = document.getElementById('input-name').value;
-		const loc = document.getElementById('input-location').value;
-		const info = document.getElementById('input-info').value;
-		const btn = document.getElementById('main-save-btn');
+        const name = document.getElementById('input-name').value;
+        const loc = document.getElementById('input-location').value;
+        const info = document.getElementById('input-info').value;
+        const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
+        const btn = document.getElementById('main-save-btn');
 
-		// 2. Logik für Namen/Pflichtfelder
-		if (isSpot) {
-			// Bei einem Spot ist der Ort der "Name" in der Liste
-			name = "📍 " + (loc || "Punkt ohne Namen");
-		} else {
-			// Bei einem Pilz ist der Name Pflicht
-			if (!name) { alert("Bitte Pilznamen eingeben"); return; }
-		}
+        if(!name) { alert("Bitte Name eingeben"); return; }
+        btn.disabled = true; btn.innerText = "⌛ GPS...";
 
-		// 3. Button sperren (während GPS sucht)
-		btn.disabled = true; 
-		btn.innerText = "⌛ GPS...";
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const photoId = currentImage ? Date.now().toString() + '_p' : null;
+            let thumb = 'icon-192.png';
+            if (currentImage) {
+                await idb.put('photos', { id: photoId, full: currentImage });
+                thumb = await createThumb(currentImage);
+            }
 
-		navigator.geolocation.getCurrentPosition(async (pos) => {
-			// Foto verarbeiten
-			const photoId = currentImage ? Date.now().toString() + '_p' : null;
-			let thumb = 'icon-192.png';
-			if (currentImage) {
-				await idb.put('photos', { id: photoId, full: currentImage });
-				thumb = await createThumb(currentImage);
-			}
+            const newEntry = {
+                id: Date.now().toString(),
+                name: name,
+                location: loc || 'Waldpunkt',
+                info: info,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                ts: Date.now(),
+                photoId: photoId,
+                thumb: thumb,
+                type: isSpot ? 'spot' : 'fund'
+            };
 
-			// Objekt erstellen
-			const newEntry = {
-				id: Date.now().toString(),
-				name: name,
-				location: loc || (isSpot ? 'Markierter Spot' : 'Waldpunkt'),
-				info: info,
-				lat: pos.coords.latitude,
-				lng: pos.coords.longitude,
-				ts: Date.now(),
-				photoId: photoId,
-				thumb: thumb,
-				type: isSpot ? 'spot' : 'fund'
-			};
-
-			// Speichern und UI leeren
-			await idb.put('entries', newEntry);
-			document.getElementById('input-name').value = '';
-			document.getElementById('input-location').value = '';
-			document.getElementById('input-info').value = '';
-			currentImage = null;
-			document.getElementById('preview-container').style.display = 'none';
-			
-			btn.disabled = false; 
-			btn.innerText = "📍 Speichern";
-			
-			// Daten neu laden und Anzeige aktualisieren
-			entries = await idb.getAll('entries');
-			updateUI();
-			
-		}, (err) => { 
-			btn.disabled = false; 
-			btn.innerText = "📍 Speichern"; 
-			alert("GPS Fehler: " + err.message); 
-		}, { enableHighAccuracy: true });
-	}
+            await idb.put('entries', newEntry);
+            document.getElementById('input-name').value = '';
+            document.getElementById('input-location').value = '';
+            document.getElementById('input-info').value = '';
+            currentImage = null;
+            document.getElementById('preview-container').style.display = 'none';
+            btn.disabled = false; btn.innerText = "📍 Speichern";
+            
+            entries = await idb.getAll('entries');
+            updateUI();
+        }, () => { btn.disabled = false; btn.innerText = "📍 Speichern"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
+    }
 
     async function createThumb(base64) {
         return new Promise(r => {
@@ -353,90 +324,60 @@
         });
     }
 
-	function updateUI() {
-        const query = document.getElementById('search-input').value.toLowerCase();
-        
-        // 1. Filtern der Einträge
-        const filtered = entries.filter(e => {
-            // Prüfung, ob der Filter für diesen Typ (fund/spot) überhaupt aktiv ist
-            if (!activeFilters[e.type]) return false;
+    function updateUI() {
+		const query = document.getElementById('search-input').value.toLowerCase();
+		const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
+		
+		// Bestehende Marker entfernen
+		markersOnMap.forEach(m => map.removeLayer(m));
+		
+		markersOnMap = filtered.map(e => {
+			const m = L.marker([e.lat, e.lng]).addTo(map);
+			
+			// Farbe für "Spots" anpassen (bläulich)
+			if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
+			
+			// Datum schön formatieren
+			const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
+				day: '2-digit', month: '2-digit', year: 'numeric' 
+			});
 
-            // Spezifische Such-Logik
-            if (e.type === 'fund') {
-                // Pilze: Suche nur im Namen
-                return e.name.toLowerCase().includes(query);
-            } else {
-                // Spots: Suche in Ort und Info
-                const inLocation = e.location.toLowerCase().includes(query);
-                const inInfo = e.info ? e.info.toLowerCase().includes(query) : false;
-                return inLocation || inInfo;
-            }
-        }); // Ende des Filters
+			// Popup-Inhalt mit Thumbnail zusammenbauen
+			const popupContent = `
+				<div style="text-align:center; min-width: 100px;">
+					<img src="${e.thumb}" 
+						 onclick="showFullPhoto('${e.photoId}')" 
+						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
+					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
+					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
+				</div>
+			`;
+			
+			return m.bindPopup(popupContent);
+		});
 
-        // 2. Bestehende Marker von der Karte entfernen
-        markersOnMap.forEach(m => map.removeLayer(m));
-        
-        // 3. Neue Marker für gefilterte Ergebnisse setzen
-        markersOnMap = filtered.map(e => {
-            const m = L.marker([e.lat, e.lng]).addTo(map);
-            
-            // Farbe für "Spots" anpassen (bläulich)
-            if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
-            
-            // Datum schön formatieren
-            const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
-                day: '2-digit', month: '2-digit', year: 'numeric' 
-            });
-
-            // Popup-Inhalt mit Thumbnail
-            const popupContent = `
-                <div style="text-align:center; min-width: 100px;">
-                    <img src="${e.thumb}" 
-                         onclick="showFullPhotoFromGallery('${e.photoId}')" 
-                         style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
-                    <div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
-                    <div style="font-size:0.75rem; color:#666;">${dateStr}</div>
-                </div>
-            `;
-            
-            return m.bindPopup(popupContent);
-        });
-
-        // 4. Liste unter der Karte befüllen
         const listEl = document.getElementById('mushroom-list');
         listEl.innerHTML = '';
-        
-        // Gruppierung nach Namen
-        const groups = filtered.reduce((acc, e) => { 
-            if(!acc[e.name]) acc[e.name] = []; 
-            acc[e.name].push(e); 
-            return acc; 
-        }, {});
+        const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
         
         Object.keys(groups).sort().forEach(name => {
             const g = groups[name];
-            const li = document.createElement('li'); 
-            li.className = 'list-item';
-            
-            // Check ob die ganze Gruppe nur aus Spots besteht für die Farbe
+            const li = document.createElement('li'); li.className = 'list-item';
             const isSpot = g.every(e => e.type === 'spot');
             li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
-            
             li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
             li.onclick = () => openDetail(name, g);
             listEl.appendChild(li);
         });
-    } // HIER endet updateUI nun korrekt.
-
-    // 5. Klick-Listener (AUßERHALB der Funktion platziert)
-    document.addEventListener('click', (ev) => {
-        const isMarker = ev.target.closest('.leaflet-marker-icon');
-        const isPopup = ev.target.closest('.leaflet-popup');
-
-        if (!isMarker && !isPopup) {
-            if(typeof map !== 'undefined') map.closePopup();
-        }
-    }, true);
+		
+		// NEU: Popups schließen bei Klick irgendwo in die App (außer auf Marker)
+		document.addEventListener('click', (ev) => {
+			// Wenn das Ziel nicht der Marker oder ein Popup ist, schließen wir alle Popups
+			if (!ev.target.closest('.leaflet-marker-icon') && !ev.target.closest('.leaflet-popup')) {
+				map.closePopup();
+			}
+		}, true); // "true" für Capture-Phase, damit es vor anderen Events greift
+    }
 	
 	async function showFullPhotoFromGallery(photoId) {
 		if (!photoId) return;
@@ -462,12 +403,6 @@
 			map.closePopup();
 		}
 	}, true);
-	
-	function toggleFilter(type) {
-		activeFilters[type] = !activeFilters[type];
-		document.getElementById('filter-' + type).classList.toggle('active', activeFilters[type]);
-		updateUI(); // Liste sofort aktualisieren
-	}
 	
 	function switchTab(type) {
 		// Blendet die Container ein oder aus
