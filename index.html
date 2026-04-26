@@ -206,15 +206,34 @@
     }
 
     function updateUI() {
-        const query = document.getElementById('search-input').value.toLowerCase();
-        const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
-        markersOnMap.forEach(m => map.removeLayer(m));
-        
-        markersOnMap = filtered.map(e => {
-            const m = L.marker([e.lat, e.lng]).addTo(map);
-            if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
-            return m.bindPopup(`<b>${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</b>`);
-        });
+		const query = document.getElementById('search-input').value.toLowerCase();
+		const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
+		
+		// Bestehende Marker entfernen
+		markersOnMap.forEach(m => map.removeLayer(m));
+		
+		markersOnMap = filtered.map(e => {
+			const m = L.marker([e.lat, e.lng]).addTo(map);
+			
+			// Farbe für "Spots" anpassen (bläulich)
+			if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
+			
+			// Datum schön formatieren
+			const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
+				day: '2-digit', month: '2-digit', year: 'numeric' 
+			});
+
+			// Popup-Inhalt mit Thumbnail zusammenbauen
+			const popupContent = `
+				<div style="text-align:center; min-width: 100px;">
+					<img src="${e.thumb}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-bottom:5px; border:1px solid #ddd;">
+					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
+					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
+				</div>
+			`;
+			
+			return m.bindPopup(popupContent);
+		});
 
         const listEl = document.getElementById('mushroom-list');
         listEl.innerHTML = '';
@@ -229,6 +248,14 @@
             li.onclick = () => openDetail(name, g);
             listEl.appendChild(li);
         });
+		
+		// NEU: Popups schließen bei Klick irgendwo in die App (außer auf Marker)
+		document.addEventListener('click', (ev) => {
+			// Wenn das Ziel nicht der Marker oder ein Popup ist, schließen wir alle Popups
+			if (!ev.target.closest('.leaflet-marker-icon') && !ev.target.closest('.leaflet-popup')) {
+				map.closePopup();
+			}
+		}, true); // "true" für Capture-Phase, damit es vor anderen Events greift
     }
 
     async function openDetail(name, group) {
