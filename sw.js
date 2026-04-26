@@ -1,11 +1,4 @@
 const CACHE_NAME = 'pilzlog-v5.5';
-self.addEventListener('install', event => {
-    self.skipWaiting(); // Zwingt den neuen SW, sofort aktiv zu werden
-});
-
-self.addEventListener('activate', event => {
-    event.waitUntil(clients.claim()); // Übernimmt sofort die Kontrolle über alle offenen Fenster
-});
 const ASSETS = [
   '/Pilz_Logbuch/',
   '/Pilz_Logbuch/index.html',
@@ -16,12 +9,33 @@ const ASSETS = [
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
+// 1. Install-Event: Cachen der Dateien + Sofort aktivieren
 self.addEventListener('install', event => {
+  self.skipWaiting(); 
   event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS))
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('Caching assets...');
+      return cache.addAll(ASSETS);
+    })
   );
 });
 
+// 2. Activate-Event: Alte Caches aufräumen & Kontrolle übernehmen
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    Promise.all([
+      clients.claim(),
+      // Optional: Hier könnte man alte Cache-Versionen löschen
+      caches.keys().then(cacheNames => {
+        return Promise.all(
+          cacheNames.filter(name => name !== CACHE_NAME).map(name => caches.delete(name))
+        );
+      })
+    ])
+  );
+});
+
+// 3. Fetch-Event: Offline-Verfügbarkeit sicherstellen
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(response => {
