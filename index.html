@@ -58,9 +58,31 @@
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
         .wiki-link { text-decoration: none; background: #e1e8e1; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
         .hidden { display: none; }
+		
+		/* Lightbox Style */
+		#lightbox {
+			position: fixed;
+			inset: 0;
+			background: rgba(0,0,0,0.9);
+			z-index: 3000;
+			display: none;
+			align-items: center;
+			justify-content: center;
+			cursor: zoom-out;
+		}
+		#lightbox img {
+			max-width: 95%;
+			max-height: 95%;
+			border-radius: 8px;
+			box-shadow: 0 0 20px rgba(0,0,0,0.5);
+		}
     </style>
 </head>
 <body>
+
+<div id="lightbox" onclick="this.style.display='none'">
+    <img id="lightbox-img" src="" alt="Vollbild">
+</div>
 
 <div id="app-container">
     <div id="map">
@@ -124,6 +146,7 @@
 
     const idb = {
         getAll: s => new Promise(r => { const req = db.transaction(s).objectStore(s).getAll(); req.onsuccess = () => r(req.result); }),
+		get: (s, id) => new Promise(r => { const req = db.transaction(s).objectStore(s).get(id); req.onsuccess = () => r(req.result); }),
         put: (s, o) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).put(o); req.onsuccess = () => r(); }),
         del: (s, id) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).delete(id); req.onsuccess = () => r(); })
     };
@@ -226,7 +249,9 @@
 			// Popup-Inhalt mit Thumbnail zusammenbauen
 			const popupContent = `
 				<div style="text-align:center; min-width: 100px;">
-					<img src="${e.thumb}" style="width:80px; height:80px; object-fit:cover; border-radius:8px; margin-bottom:5px; border:1px solid #ddd;">
+					<img src="${e.thumb}" 
+						 onclick="showFullPhoto('${e.photoId}')" 
+						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
 					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
 				</div>
@@ -257,6 +282,29 @@
 			}
 		}, true); // "true" für Capture-Phase, damit es vor anderen Events greift
     }
+	
+	async function showFullPhoto(photoId) {
+		if (!photoId) return;
+		const photoData = await idb.get('photos', photoId);
+		if (photoData) {
+			const lb = document.getElementById('lightbox');
+			document.getElementById('lightbox-img').src = photoData.full;
+			lb.style.display = 'flex';
+		}
+	}
+
+	// Der "aufgeweichte" Listener
+	document.addEventListener('click', (ev) => {
+		const isMarker = ev.target.closest('.leaflet-marker-icon');
+		const isPopup = ev.target.closest('.leaflet-popup');
+		const isLightboxTrigger = ev.target.tagName === 'IMG' && isPopup;
+
+		// Wenn es kein Marker ist UND kein Popup ODER wenn auf das Bild im Popup geklickt wurde:
+		// (Im Falle des Bildklicks schließt Leaflet das Popup meist eh, aber so kontrollieren wir es)
+		if (!isMarker && !isPopup) {
+			map.closePopup();
+		}
+	}, true);
 
     async function openDetail(name, group) {
         document.getElementById('modal-title').innerHTML = `${name} <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
