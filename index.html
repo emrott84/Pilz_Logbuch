@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pilz Logbuch v5.0</title>
+    <title>Pilz Logbuch v5.3</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -11,91 +11,72 @@
     <link rel="apple-touch-icon" href="icon-192.png">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; }
+        :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; --spot: #607D8B; }
         body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         #app-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
-        #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; position: relative; }
+        #map { height: 45vh; min-height: 250px; width: 100%; z-index: 1; flex-shrink: 0; position: relative; }
         
-        .gps-fab {
-            position: absolute;
-            bottom: 20px;
-            right: 10px;
-            z-index: 1000;
-            background: white;
-            width: 42px;
-            height: 42px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            cursor: pointer;
-            font-size: 22px;
-            border: 1px solid #ccc;
-        }
+        .gps-fab { position: absolute; bottom: 20px; right: 10px; z-index: 1000; background: white; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; font-size: 22px; border: 1px solid #ccc; }
 
         #ui-content { padding: 12px; background: var(--bg); flex: 1; }
         .type-switch { display: flex; background: #e0e0e0; border-radius: 10px; margin-bottom: 12px; padding: 3px; gap: 4px; }
         .type-switch label { flex: 1; text-align: center; cursor: pointer; border-radius: 8px; font-size: 0.9rem; padding: 8px 0; transition: 0.2s; }
         .type-switch input { display: none; }
         .type-switch input:checked + span { background: var(--primary); color: white; display: block; border-radius: 7px; margin: -4px; padding: 8px 0; font-weight: bold; }
+        .type-switch.spot-active input:checked + span { background: var(--spot); }
 
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
         input[type="text"], textarea { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
         textarea { height: 60px; resize: none; }
-
-        .action-row { display: flex; gap: 8px; align-items: center; }
+        
+        .action-row { display: flex; gap: 8px; }
         .icon-btn { flex: 0 0 50px; height: 50px; background: #607D8B; border-radius: 8px; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
-        .save-btn { flex: 1; height: 50px; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
+        .save-btn { flex: 1; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
 
-        .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; }
+        #search-input { margin-bottom: 10px; }
         #mushroom-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
 
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
         .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
-        .wiki-link { text-decoration: none; background: #e1e8e1; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+        
+        .history-entry { padding: 12px; border-bottom: 1px solid #eee; position: relative; }
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-top: 8px; }
+        .btn-jump { background: #eee; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-right: 5px; }
+        
         .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div id="app-container">
-    <div id="map">
-        <div class="gps-fab" onclick="locateUser()">🎯</div>
-    </div>
+    <div id="map"><div class="gps-fab" onclick="locateUser()">🎯</div></div>
 
     <div id="ui-content">
-        <div class="type-switch">
-            <label><input type="radio" name="entry-type" value="fund" checked><span>🍄 Fund</span></label>
-            <label><input type="radio" name="entry-type" value="spot"><span>📍 Spot</span></label>
+        <div class="type-switch" id="main-switch">
+            <label><input type="radio" name="entry-type" value="fund" checked onchange="updateUI()"><span>🍄 Fund</span></label>
+            <label><input type="radio" name="entry-type" value="spot" onchange="updateUI()"><span>📍 Spot</span></label>
         </div>
 
         <div class="card">
             <input type="text" id="input-name" placeholder="Name (z.B. Steinpilz)">
-            <input type="text" id="input-location" placeholder="Ort (z.B. Mooshang)">
-            <textarea id="input-info" placeholder="Info zum Habitat..."></textarea>
-            
+            <input type="text" id="input-location" placeholder="Ort / Stelle">
+            <textarea id="input-info" placeholder="Habitat, Bäume, Boden..."></textarea>
             <div class="action-row">
                 <button class="icon-btn" onclick="document.getElementById('camera-input').click()">📷</button>
                 <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" onchange="handleImage(this)">
-                <button class="icon-btn" onclick="document.getElementById('gallery-input').click()">🖼️</button>
-                <input type="file" id="gallery-input" class="hidden" accept="image/*" onchange="handleImage(this)">
-                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Speichern</button>
+                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Eintrag speichern</button>
             </div>
-            <div id="preview-container" style="margin-top: 8px; display:none;"><small style="color:var(--accent)">✔ Foto bereit</small></div>
+            <div id="preview-container" style="display:none; color:var(--accent); font-size:0.8rem; margin-top:5px;">✔ Foto bereit</div>
         </div>
 
-        <div class="search-bar-container">
-            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0;">
-        </div>
-
+        <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()">
         <ul id="mushroom-list"></ul>
-        <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
-            <button style="background:none; border:none; font-size:0.7rem;" onclick="exportData()">Backup</button>
-            <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
+        
+        <div style="text-align:center; padding: 30px 0; opacity: 0.4; font-size: 0.7rem;">
+            <span onclick="exportData()">Backup</span> | <span onclick="document.getElementById('import-file').click()">Import</span>
             <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
@@ -108,16 +89,18 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+    const APP_VERSION = '5.3'; 
     let db, entries = [], markersOnMap = [], currentImage = null;
 
+    // --- DATABASE ---
     async function openDB() {
         return new Promise(res => {
             const req = indexedDB.open('PilzLogDB_v4', 1);
             req.onsuccess = e => { db = e.target.result; res(); };
             req.onupgradeneeded = e => {
                 const d = e.target.result;
-                d.createObjectStore('entries', {keyPath:'id'});
-                d.createObjectStore('photos', {keyPath:'id'});
+                if(!d.objectStoreNames.contains('entries')) d.createObjectStore('entries', {keyPath:'id'});
+                if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', {keyPath:'id'});
             };
         });
     }
@@ -128,21 +111,17 @@
         del: (s, id) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).delete(id); req.onsuccess = () => r(); })
     };
 
-    let map = L.map('map').setView([50.297, 8.266], 13);
+    // --- MAP ---
+    let map = L.map('map').setView([51.16, 10.45], 6);
     L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
     function locateUser() {
-        const btn = document.querySelector('.gps-fab');
-        btn.innerText = "⌛";
-        navigator.geolocation.getCurrentPosition((pos) => {
-            const lat = pos.coords.latitude, lng = pos.coords.longitude;
-            map.flyTo([lat, lng], 17);
-            btn.innerText = "🎯";
-            if (window.userMarker) window.userMarker.setLatLng([lat, lng]);
-            else window.userMarker = L.circleMarker([lat, lng], { color: '#3b5940', radius: 8 }).addTo(map);
-        }, () => { btn.innerText = "🎯"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
+        navigator.geolocation.getCurrentPosition(pos => {
+            map.flyTo([pos.coords.latitude, pos.coords.longitude], 17);
+        }, () => alert("GPS Fehler"), {enableHighAccuracy:true});
     }
 
+    // --- LOGIC ---
     function handleImage(input) {
         if (input.files[0]) {
             const r = new FileReader();
@@ -153,46 +132,29 @@
 
     async function saveEntry() {
         const name = document.getElementById('input-name').value;
-        const loc = document.getElementById('input-location').value;
-        const info = document.getElementById('input-info').value;
         const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
         const btn = document.getElementById('main-save-btn');
+        if(!name) return alert("Bitte Name eingeben");
 
-        if(!name) { alert("Bitte Name eingeben"); return; }
         btn.disabled = true; btn.innerText = "⌛ GPS...";
 
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const photoId = currentImage ? Date.now().toString() + '_p' : null;
+        navigator.geolocation.getCurrentPosition(async pos => {
+            const id = Date.now().toString();
             let thumb = 'icon-192.png';
-            if (currentImage) {
-                await idb.put('photos', { id: photoId, full: currentImage });
+            if(currentImage) {
+                await idb.put('photos', {id: id+'_p', full: currentImage});
                 thumb = await createThumb(currentImage);
             }
-
-            const newEntry = {
-                id: Date.now().toString(),
-                name: name,
-                location: loc || 'Waldpunkt',
-                info: info,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                ts: Date.now(),
-                photoId: photoId,
-                thumb: thumb,
+            await idb.put('entries', {
+                id, name, thumb, ts: Date.now(),
+                lat: pos.coords.latitude, lng: pos.coords.longitude,
+                location: document.getElementById('input-location').value || 'Waldpunkt',
+                info: document.getElementById('input-info').value,
                 type: isSpot ? 'spot' : 'fund'
-            };
-
-            await idb.put('entries', newEntry);
-            document.getElementById('input-name').value = '';
-            document.getElementById('input-location').value = '';
-            document.getElementById('input-info').value = '';
-            currentImage = null;
-            document.getElementById('preview-container').style.display = 'none';
-            btn.disabled = false; btn.innerText = "📍 Speichern";
-            
-            entries = await idb.getAll('entries');
-            updateUI();
-        }, () => { btn.disabled = false; btn.innerText = "📍 Speichern"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
+            });
+            // Reset & Reload
+            location.reload();
+        }, () => { alert("Kein GPS!"); btn.disabled = false; btn.innerText = "📍 Eintrag speichern"; }, {enableHighAccuracy:true});
     }
 
     async function createThumb(base64) {
@@ -206,88 +168,109 @@
     }
 
     function updateUI() {
-        const query = document.getElementById('search-input').value.toLowerCase();
-        const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
-        markersOnMap.forEach(m => map.removeLayer(m));
+        const q = document.getElementById('search-input').value.toLowerCase();
+        const isSpotMode = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
+        document.getElementById('main-switch').classList.toggle('spot-active', isSpotMode);
+
+        const filtered = entries.filter(e => e.name.toLowerCase().includes(q));
         
+        markersOnMap.forEach(m => map.removeLayer(m));
         markersOnMap = filtered.map(e => {
             const m = L.marker([e.lat, e.lng]).addTo(map);
-            if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
-            return m.bindPopup(`<b>${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</b>`);
+            if(m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
+            return m.bindPopup(`<b>${e.type==='spot'?'📍':'🍄'} ${e.name}</b>`);
         });
 
         const listEl = document.getElementById('mushroom-list');
         listEl.innerHTML = '';
         const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
         
-        Object.keys(groups).sort().forEach(name => {
-            const g = groups[name];
+        Object.keys(groups).sort().forEach(n => {
+            const g = groups[n];
             const li = document.createElement('li'); li.className = 'list-item';
-            const isSpot = g.every(e => e.type === 'spot');
-            li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
-            li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
-            li.onclick = () => openDetail(name, g);
+            const allSpots = g.every(e => e.type === 'spot');
+            li.style.borderLeft = allSpots ? "5px solid var(--spot)" : "5px solid var(--primary)";
+            li.innerHTML = `<img src="${g[0].thumb}"><div><strong>${n}</strong><br><small>${g.length} Eintrag/Einträge</small></div>`;
+            li.onclick = () => openDetail(n, g);
             listEl.appendChild(li);
         });
     }
 
     async function openDetail(name, group) {
-        document.getElementById('modal-title').innerHTML = `${name} <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
+        document.getElementById('modal-title').innerText = name;
         const hist = document.getElementById('detail-history');
         hist.innerHTML = '';
         group.sort((a,b) => b.ts - a.ts).forEach(e => {
             const div = document.createElement('div');
-            div.style.padding = "10px"; div.style.borderBottom = "1px solid #eee";
-            div.innerHTML = `<div style="display:flex;justify-content:space-between"><strong>📍 ${e.location}</strong><small>${new Date(e.ts).toLocaleDateString()}</small></div><div style="font-size:0.8rem;color:#666">${e.info || ''}</div><button style="margin-top:5px;font-size:0.7rem" onclick="jumpTo(${e.lat},${e.lng})">Zeigen</button>`;
+            div.className = 'history-entry';
+            div.innerHTML = `
+                <div style="display:flex; justify-content:space-between">
+                    <strong>${new Date(e.ts).toLocaleDateString()} - ${e.location}</strong>
+                    <span>${e.type==='spot'?'📍':'🍄'}</span>
+                </div>
+                <p style="font-size:0.85rem; color:#555; margin: 5px 0;">${e.info || 'Keine Zusatzinfo'}</p>
+                <button class="btn-jump" onclick="jumpTo(${e.lat},${e.lng})">Auf Karte</button>
+                <button class="btn-delete" onclick="deleteEntry('${e.id}')">Löschen</button>
+            `;
             hist.appendChild(div);
         });
         toggleModal('detail-modal');
     }
 
-    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
+    async function deleteEntry(id) {
+        if(confirm("Diesen Eintrag wirklich löschen?")) {
+            await idb.del('entries', id);
+            // Falls ein Foto existiert, theoretisch auch löschen, aber idb.del('photos', id+'_p') optional
+            location.reload();
+        }
+    }
+
+    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex')?'none':'flex'; }
     function jumpTo(lat, lng) { toggleModal('detail-modal'); map.flyTo([lat, lng], 17); }
-    async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
-    async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
-    window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
-// --- FORCE UPDATE LOGIC ---
-const APP_VERSION = '5.4'; // Jedes Mal erhöhen, wenn du das Update erzwingen willst!
+    // --- BACKUP (KOMPLETT) ---
+    async function exportData() {
+        const e = await idb.getAll('entries');
+        const p = await idb.getAll('photos');
+        const backup = { entries: e, photos: p, version: APP_VERSION };
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(backup)], {type:'application/json'}));
+        a.download = `pilzlog_backup_${new Date().toISOString().slice(0,10)}.json`;
+        a.click();
+    }
 
-	if ('serviceWorker' in navigator) {
-		window.addEventListener('load', () => {
-			navigator.serviceWorker.register('./sw.js').then(reg => {
-				// Prüfen, ob wir eine neue Version erzwingen müssen
-				const lastVersion = localStorage.getItem('app_version');
-				if (lastVersion && lastVersion !== APP_VERSION) {
-					console.log("Neue Version erkannt! Lösche Cache...");
-					
-					// Löscht alle Browser-Caches (Cache Storage)
-					caches.keys().then(names => {
-						for (let name of names) caches.delete(name);
-					});
-					
-					localStorage.setItem('app_version', APP_VERSION);
-					
-					// Kurze Verzögerung, dann harter Reload
-					setTimeout(() => { window.location.reload(true); }, 500);
-				} else {
-					localStorage.setItem('app_version', APP_VERSION);
-				}
+    async function importData(input) {
+        const r = new FileReader();
+        r.onload = async event => {
+            try {
+                const data = JSON.parse(event.target.result);
+                if(data.entries) for(let x of data.entries) await idb.put('entries', x);
+                if(data.photos) for(let y of data.photos) await idb.put('photos', y);
+                alert("Import erfolgreich!");
+                location.reload();
+            } catch(e) { alert("Fehler beim Import: " + e); }
+        };
+        r.readAsText(input.files[0]);
+    }
 
-				// Standard Update-Logik
-				reg.onupdatefound = () => {
-					const installingWorker = reg.installing;
-					installingWorker.onstatechange = () => {
-						if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-							if (confirm("Update verfügbar! App neu starten?")) {
-								window.location.reload();
-							}
-						}
-					};
-				};
-			});
-		});
-	}
+    // --- INIT & ABRISSBIRNE ---
+    window.onload = async () => {
+        await openDB();
+        entries = await idb.getAll('entries');
+        updateUI();
+
+        const lastV = localStorage.getItem('app_v');
+        if(lastV && lastV !== APP_VERSION) {
+            console.log("Version Upgrade. Clearing Cache...");
+            const names = await caches.keys();
+            for(let n of names) await caches.delete(n);
+            localStorage.setItem('app_v', APP_VERSION);
+            location.reload();
+        } else {
+            localStorage.setItem('app_v', APP_VERSION);
+        }
+    };
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 </script>
 </body>
 </html>
