@@ -76,6 +76,47 @@
 			border-radius: 8px;
 			box-shadow: 0 0 20px rgba(0,0,0,0.5);
 		}
+		
+		.history-item {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			padding: 12px;
+			border-bottom: 1px solid #eee;
+			background: #fff;
+		}
+		.history-info {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 2px;
+		}
+		.history-info strong { color: var(--primary); font-size: 0.95rem; }
+		.history-info small { color: #666; font-size: 0.75rem; }
+		.history-info p { margin: 0; font-size: 0.85rem; color: #444; line-height: 1.2; }
+
+		.history-thumb {
+			width: 60px;
+			height: 60px;
+			object-fit: cover;
+			border-radius: 6px;
+			cursor: zoom-in;
+			border: 1px solid #ddd;
+		}
+		.pin-btn {
+			background: #f0f0f0;
+			border: none;
+			border-radius: 50%;
+			width: 36px;
+			height: 36px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.2rem;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+		.pin-btn:active { background: #e0e0e0; }
     </style>
 </head>
 <body>
@@ -307,21 +348,53 @@
 	}, true);
 
     async function openDetail(name, group) {
-        document.getElementById('modal-title').innerHTML = `${name} <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
-        const hist = document.getElementById('detail-history');
-        hist.innerHTML = '';
-        group.sort((a,b) => b.ts - a.ts).forEach(e => {
-            const div = document.createElement('div');
-            div.style.padding = "10px"; div.style.borderBottom = "1px solid #eee";
-            div.innerHTML = `<div style="display:flex;justify-content:space-between"><strong>📍 ${e.location}</strong><small>${new Date(e.ts).toLocaleDateString()}</small></div><div style="font-size:0.8rem;color:#666">${e.info || ''}</div><button style="margin-top:5px;font-size:0.7rem" onclick="jumpTo(${e.lat},${e.lng})">Zeigen</button>`;
-            hist.appendChild(div);
-        });
-        toggleModal('detail-modal');
-    }
+		// Titel und Wiki-Link
+		document.getElementById('modal-title').innerHTML = `
+			<div style="display:flex; align-items:center; gap:10px;">
+				${name} 
+				<a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>
+			</div>`;
+		
+		const hist = document.getElementById('detail-history');
+		hist.innerHTML = '';
+		
+		// Sortierung: Neueste Funde oben
+		group.sort((a, b) => b.ts - a.ts).forEach(e => {
+			const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
+				day: '2-digit', month: '2-digit', year: 'numeric' 
+			});
+
+			const item = document.createElement('div');
+			item.className = 'history-item';
+			item.innerHTML = `
+				<img src="${e.thumb}" class="history-thumb" onclick="showFullPhoto('${e.photoId}')">
+				
+				<div class="history-info">
+					<strong>${e.location}</strong>
+					<small>📅 ${dateStr}</small>
+					${e.info ? `<p>${e.info}</p>` : ''}
+				</div>
+				
+				<button class="pin-btn" onclick="jumpTo(${e.lat}, ${e.lng})" title="Auf Karte zeigen">📍</button>
+			`;
+			hist.appendChild(item);
+		});
+		
+		toggleModal('detail-modal');
+	}
 
     function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
-    function jumpTo(lat, lng) { toggleModal('detail-modal'); map.flyTo([lat, lng], 17); }
-    async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
+	function jumpTo(lat, lng) {
+		toggleModal('detail-modal');
+		map.flyTo([lat, lng], 17);
+		
+		// Optional: Das Popup des Markers automatisch öffnen
+		markersOnMap.forEach(m => {
+			if (m.getLatLng().lat === lat && m.getLatLng().lng === lng) {
+				m.openPopup();
+			}
+		});
+	}    async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
     async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
