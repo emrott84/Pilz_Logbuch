@@ -379,14 +379,16 @@
 		}, true); // "true" für Capture-Phase, damit es vor anderen Events greift
     }
 	
-	async function showFullPhoto(photoId) {
+	async function showFullPhotoFromGallery(photoId) {
 		if (!photoId) return;
-		const photoData = await idb.get('photos', photoId);
-		if (photoData) {
-			const lb = document.getElementById('lightbox');
-			document.getElementById('lightbox-img').src = photoData.full;
-			lb.style.display = 'flex';
-		}
+		currentPhotoIndex = currentPhotoGallery.indexOf(photoId);
+		updateLightbox();
+		
+		const lb = document.getElementById('lightbox');
+		lb.style.display = 'flex';
+		
+		// Auch für die Lightbox einen History-Eintrag erstellen
+		history.pushState({ lightboxOpen: true }, "");
 	}
 
 	// Der "aufgeweichte" Listener
@@ -458,7 +460,24 @@
 		toggleModal('detail-modal');
 	}
 
-    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
+	function toggleModal(id) {
+		const m = document.getElementById(id);
+		const isOpen = m.style.display === 'flex';
+
+		if (!isOpen) {
+			// Modal wird geöffnet -> Zustand in die History pushen
+			m.style.display = 'flex';
+			history.pushState({ modalOpen: id }, "");
+		} else {
+			// Modal wird geschlossen (z.B. durch das X)
+			m.style.display = 'none';
+			// Nur zurückgehen, wenn der aktuelle Zustand noch das Modal ist
+			if (history.state && history.state.modalOpen === id) {
+				history.back();
+			}
+		}
+	}	
+	
 	function jumpTo(lat, lng) {
 		toggleModal('detail-modal');
 		map.flyTo([lat, lng], 17);
@@ -521,6 +540,22 @@
 		
 		updateLightbox();
 	}
+	
+	window.addEventListener('popstate', (event) => {
+		// Alle Modale finden, die gerade offen sind
+		const modal = document.getElementById('detail-modal');
+		
+		// Falls das Modal offen ist, schließen wir es
+		if (modal && modal.style.display === 'flex') {
+			modal.style.display = 'none';
+		}
+		
+		// Falls die Lightbox offen ist, schließen wir auch diese
+		const lb = document.getElementById('lightbox');
+		if (lb && lb.style.display === 'flex') {
+			lb.style.display = 'none';
+		}
+	});
 </script>
 </body>
 </html>
