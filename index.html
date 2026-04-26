@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pilz Logbuch v4.7</title>
+    <title>Pilz Logbuch v5.0</title>
     <link rel="manifest" href="./manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="icon-192.png">
@@ -12,129 +13,89 @@
     <style>
         :root { --primary: #3b5940; --accent: #4CAF50; --bg: #f5f0e8; --white: #ffffff; --danger: #d32f2f; }
         body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-        
         #app-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
+        #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; position: relative; }
         
-        #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; }
-        
-        /* Der Zentrier-Button: Jetzt sicher positioniert */
-       .gps-fab {
-    position: absolute;
-    bottom: 50px; /* Hoch genug über dem Leaflet-Logo */
-    right: 10px;
-    z-index: 1000;
-    background: white;
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-    cursor: pointer;
-    font-size: 20px;
-    border: 1px solid #ccc;
-}
-
+        .gps-fab {
+            position: absolute;
+            bottom: 20px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            cursor: pointer;
+            font-size: 22px;
+            border: 1px solid #ccc;
+        }
 
         #ui-content { padding: 12px; background: var(--bg); flex: 1; }
+        .type-switch { display: flex; background: #e0e0e0; border-radius: 10px; margin-bottom: 12px; padding: 3px; gap: 4px; }
+        .type-switch label { flex: 1; text-align: center; cursor: pointer; border-radius: 8px; font-size: 0.9rem; padding: 8px 0; transition: 0.2s; }
+        .type-switch input { display: none; }
+        .type-switch input:checked + span { background: var(--primary); color: white; display: block; border-radius: 7px; margin: -4px; padding: 8px 0; font-weight: bold; }
+
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        
         input[type="text"], textarea { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
         textarea { height: 60px; resize: none; }
 
-        .action-row { display: flex; gap: 8px; align-items: center; margin-top: 5px; }
-        .icon-btn { flex: 0 0 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: #607D8B; border-radius: 8px; border: none; color: white; cursor: pointer; }
+        .action-row { display: flex; gap: 8px; align-items: center; }
+        .icon-btn { flex: 0 0 50px; height: 50px; background: #607D8B; border-radius: 8px; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
         .save-btn { flex: 1; height: 50px; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
 
-        .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; display: flex; gap: 8px; }
+        .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; }
         #mushroom-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { background: var(--white); display: flex; align-items: center; padding: 8px; margin-bottom: 6px; border-radius: 10px; cursor: pointer; border-left: 5px solid var(--primary); }
-        .list-item img { width: 45px; height: 45px; object-fit: cover; border-radius: 6px; margin-right: 12px; }
+        .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
 
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
         .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
-
-        .wiki-link { display: inline-flex; align-items: center; text-decoration: none; background: #e1e8e1; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; margin-left: 10px; border: 1px solid #c5d1c5; }
+        .wiki-link { text-decoration: none; background: #e1e8e1; color: var(--primary); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
         .hidden { display: none; }
-		/* Unterschiedliche Marker-Farben */
-		.marker-fund { filter: hue-rotate(0deg); }      /* Standard Grün/Blau */
-		.marker-spot { filter: hue-rotate(140deg); }    /* Violett/Blau für Spots */
-
-		/* Ein simpler Umschalter (Radio-Buttons als Button-Group) */
-		.type-switch {
-			display: flex;
-			background: #eee;
-			border-radius: 8px;
-			margin-bottom: 10px;
-			padding: 2px;
-		}
-		.type-switch label {
-			flex: 1;
-			text-align: center;
-			padding: 8px;
-			cursor: pointer;
-			border-radius: 6px;
-			font-size: 0.9rem;
-		}
-		.type-switch input { display: none; }
-		.type-switch input:checked + span {
-			background: var(--primary);
-			color: white;
-			display: block;
-			border-radius: 6px;
-			padding: 6px;
-		}
     </style>
 </head>
 <body>
 
 <div id="app-container">
     <div id="map">
-        <div class="gps-fab" onclick="locateUser()" title="Standort zentrieren">🎯</div>
+        <div class="gps-fab" onclick="locateUser()">🎯</div>
     </div>
 
     <div id="ui-content">
-		<div class="type-switch">
-			<label>
-				<input type="radio" name="entry-type" value="fund" checked>
-				<span>🍄 Fund</span>
-			</label>
-			<label>
-				<input type="radio" name="entry-type" value="spot">
-				<span>📍 Spot</span>
-			</label>
-		</div>
+        <div class="type-switch">
+            <label><input type="radio" name="entry-type" value="fund" checked><span>🍄 Fund</span></label>
+            <label><input type="radio" name="entry-type" value="spot"><span>📍 Spot</span></label>
+        </div>
+
         <div class="card">
             <input type="text" id="input-name" placeholder="Name (z.B. Steinpilz)">
             <input type="text" id="input-location" placeholder="Ort (z.B. Mooshang)">
-            <textarea id="input-info" placeholder="Habitat, Begleitbäume..."></textarea>
+            <textarea id="input-info" placeholder="Info zum Habitat..."></textarea>
             
             <div class="action-row">
                 <button class="icon-btn" onclick="document.getElementById('camera-input').click()">📷</button>
                 <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" onchange="handleImage(this)">
-                
                 <button class="icon-btn" onclick="document.getElementById('gallery-input').click()">🖼️</button>
                 <input type="file" id="gallery-input" class="hidden" accept="image/*" onchange="handleImage(this)">
-                
-                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Fund mit GPS speichern</button>
+                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Speichern</button>
             </div>
-
-            <div id="preview-container" style="margin-top: 8px; display:none;">
-                <small style="color:var(--accent)">✔ Foto bereit</small>
-            </div>
+            <div id="preview-container" style="margin-top: 8px; display:none;"><small style="color:var(--accent)">✔ Foto bereit</small></div>
         </div>
 
         <div class="search-bar-container">
-            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0; flex:1;">
+            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0;">
         </div>
 
         <ul id="mushroom-list"></ul>
-        
-        <div style="text-align:center; padding: 20px 0;">
-            <button style="background:none; border:none; color:#999; font-size:0.7rem;" onclick="exportData()">Backup</button>
-            <button style="background:none; border:none; color:#999; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
+        <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
+            <button style="background:none; border:none; font-size:0.7rem;" onclick="exportData()">Backup</button>
+            <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
             <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
@@ -143,7 +104,6 @@
 <div id="detail-modal" class="full-modal">
     <div class="modal-header"><h3 id="modal-title" style="margin:0;">Details</h3><button onclick="toggleModal('detail-modal')">✕</button></div>
     <div id="detail-history" class="tab-content"></div>
-    <div id="detail-photos" class="tab-content hidden"><div id="image-grid" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;"></div></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -154,59 +114,35 @@
         return new Promise(res => {
             const req = indexedDB.open('PilzLogDB_v4', 1);
             req.onsuccess = e => { db = e.target.result; res(); };
-            req.onupgradeneeded = e => { 
-                const d = e.target.result; 
-                d.createObjectStore('entries', {keyPath:'id'}); 
-                d.createObjectStore('photos', {keyPath:'id'}); 
+            req.onupgradeneeded = e => {
+                const d = e.target.result;
+                d.createObjectStore('entries', {keyPath:'id'});
+                d.createObjectStore('photos', {keyPath:'id'});
             };
         });
     }
 
     const idb = {
         getAll: s => new Promise(r => { const req = db.transaction(s).objectStore(s).getAll(); req.onsuccess = () => r(req.result); }),
-        get: (s, id) => new Promise(r => { const req = db.transaction(s).objectStore(s).get(id); req.onsuccess = () => r(req.result); }),
         put: (s, o) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).put(o); req.onsuccess = () => r(); }),
         del: (s, id) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).delete(id); req.onsuccess = () => r(); })
     };
 
-    // --- MAP ---
     let map = L.map('map').setView([50.297, 8.266], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
     function locateUser() {
-    const btn = document.querySelector('.gps-fab');
-    btn.innerText = "⌛"; // Visuelles Feedback
+        const btn = document.querySelector('.gps-fab');
+        btn.innerText = "⌛";
+        navigator.geolocation.getCurrentPosition((pos) => {
+            const lat = pos.coords.latitude, lng = pos.coords.longitude;
+            map.flyTo([lat, lng], 17);
+            btn.innerText = "🎯";
+            if (window.userMarker) window.userMarker.setLatLng([lat, lng]);
+            else window.userMarker = L.circleMarker([lat, lng], { color: '#3b5940', radius: 8 }).addTo(map);
+        }, () => { btn.innerText = "🎯"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
+    }
 
-    navigator.geolocation.getCurrentPosition((pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        
-        // Karte fliegen und Button zurücksetzen
-        map.flyTo([lat, lng], 17);
-        btn.innerText = "🎯";
-        
-        // Optional: Kleiner blauer Punkt für den aktuellen Standort
-        if (window.userMarker) {
-            window.userMarker.setLatLng([lat, lng]);
-        } else {
-            window.userMarker = L.circleMarker([lat, lng], {
-                color: '#3b5940',
-                fillColor: '#4CAF50',
-                fillOpacity: 0.8,
-                radius: 8
-            }).addTo(map).bindPopup("Du bist hier");
-        }
-    }, (err) => {
-        btn.innerText = "🎯";
-        alert("Standort konnte nicht ermittelt werden: " + err.message);
-    }, {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0 // WICHTIG: Verhindert, dass er alte (gecashte) Daten nutzt
-    });
-}
-
-    // --- LOGIC ---
     function handleImage(input) {
         if (input.files[0]) {
             const r = new FileReader();
@@ -216,68 +152,48 @@
     }
 
     async function saveEntry() {
-		const name = document.getElementById('input-name').value;
-		const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
-		const name = document.getElementById('input-name').value;
-		const loc = document.getElementById('input-location').value;
-		const info = document.getElementById('input-info').value;
-		const btn = document.getElementById('main-save-btn');
+        const name = document.getElementById('input-name').value;
+        const loc = document.getElementById('input-location').value;
+        const info = document.getElementById('input-info').value;
+        const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
+        const btn = document.getElementById('main-save-btn');
 
-		if(!name) { alert("Bitte Namen eingeben"); return; }
-		
-		btn.innerText = "⌛ Präzises GPS wird ermittelt...";
-		btn.disabled = true;
+        if(!name) { alert("Bitte Name eingeben"); return; }
+        btn.disabled = true; btn.innerText = "⌛ GPS...";
 
-		navigator.geolocation.getCurrentPosition(async (pos) => {
-			// Wir extrahieren die Koordinaten als reine Zahlen
-			const exactLat = pos.coords.latitude;
-			const exactLng = pos.coords.longitude;
-			
-			const photoId = currentImage ? Date.now().toString() + '_p' : null;
-			let thumb = 'icon-192.png';
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const photoId = currentImage ? Date.now().toString() + '_p' : null;
+            let thumb = 'icon-192.png';
+            if (currentImage) {
+                await idb.put('photos', { id: photoId, full: currentImage });
+                thumb = await createThumb(currentImage);
+            }
 
-			if (currentImage) {
-				await idb.put('photos', { id: photoId, full: currentImage });
-				thumb = await createThumb(currentImage);
-			}
+            const newEntry = {
+                id: Date.now().toString(),
+                name: name,
+                location: loc || 'Waldpunkt',
+                info: info,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                ts: Date.now(),
+                photoId: photoId,
+                thumb: thumb,
+                type: isSpot ? 'spot' : 'fund'
+            };
 
-			const newEntry = {
-				id: Date.now().toString(),
-				name: name,
-				location: loc || 'Waldpunkt', // Fallback, falls kein Ort eingetippt wurde
-				info: info,
-				lat: exactLat,
-				lng: exactLng,
-				ts: Date.now(),
-				photoId: photoId,
-				thumb: thumb
-				type: isSpot ? 'spot' : 'fund',
-			};
-
-			await idb.put('entries', newEntry);
-			
-			// Reset UI
-			document.getElementById('input-name').value = '';
-			document.getElementById('input-location').value = '';
-			document.getElementById('input-info').value = '';
-			currentImage = null;
-			document.getElementById('preview-container').style.display = 'none';
-			btn.innerText = "📍 Fund mit GPS speichern";
-			btn.disabled = false;
-
-			entries = await idb.getAll('entries');
-			updateUI();
-			alert("Fund exakt an GPS-Position gespeichert!");
-		}, (err) => {
-			btn.innerText = "📍 Fund mit GPS speichern";
-			btn.disabled = false;
-			alert("GPS Fehler: " + err.message);
-		}, {
-			enableHighAccuracy: true, // Zwingt das Handy zur GPS-Nutzung (nicht nur Funkmasten)
-			timeout: 10000,
-			maximumAge: 0
-		});
-	}
+            await idb.put('entries', newEntry);
+            document.getElementById('input-name').value = '';
+            document.getElementById('input-location').value = '';
+            document.getElementById('input-info').value = '';
+            currentImage = null;
+            document.getElementById('preview-container').style.display = 'none';
+            btn.disabled = false; btn.innerText = "📍 Speichern";
+            
+            entries = await idb.getAll('entries');
+            updateUI();
+        }, () => { btn.disabled = false; btn.innerText = "📍 Speichern"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
+    }
 
     async function createThumb(base64) {
         return new Promise(r => {
@@ -289,132 +205,52 @@
         });
     }
 
-	function updateUI() {
-		const query = document.getElementById('search-input').value.toLowerCase();
-		const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
+    function updateUI() {
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
+        markersOnMap.forEach(m => map.removeLayer(m));
+        
+        markersOnMap = filtered.map(e => {
+            const m = L.marker([e.lat, e.lng]).addTo(map);
+            if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
+            return m.bindPopup(`<b>${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</b>`);
+        });
 
-		// 1. Alte Marker von der Karte entfernen
-		markersOnMap.forEach(m => map.removeLayer(m));
-		
-		// 2. Neue Marker setzen
-		markersOnMap = filtered.map(e => {
-			const m = L.marker([e.lat, e.lng]).addTo(map);
-			
-			// Marker-Farbe basierend auf dem Typ anpassen
-			// Falls kein Typ definiert ist (alte Funde), bleibt er Standard
-			if (e.type === 'spot') {
-				// Macht den Marker lila/blau für "Interessante Spots"
-				if (m._icon) m._icon.style.filter = "hue-rotate(140deg)"; 
-			} else {
-				// Standard-Grün/Blau für echte Funde
-				if (m._icon) m._icon.style.filter = "hue-rotate(0deg)";
-			}
-
-			const prefix = e.type === 'spot' ? '📍 Spot: ' : '🍄 ';
-			return m.bindPopup(`<b>${prefix}${e.name}</b><br><small>${new Date(e.ts).toLocaleDateString()}</small>`);
-		});
-
-		// 3. Die Liste unter der Karte aktualisieren
-		const listEl = document.getElementById('mushroom-list');
-		listEl.innerHTML = '';
-		
-		// Gruppierung nach Namen
-		const groups = filtered.reduce((acc, e) => { 
-			if(!acc[e.name]) acc[e.name]=[]; 
-			acc[e.name].push(e); 
-			return acc; 
-		}, {});
-		
-		// Liste aufbauen
-		Object.keys(groups).sort().forEach(name => {
-			const g = groups[name];
-			const li = document.createElement('li'); 
-			li.className = 'list-item';
-			
-			// Wir kennzeichnen auch in der Liste, wenn es nur Spots sind
-			const isOnlySpots = g.every(e => e.type === 'spot');
-			if (isOnlySpots) {
-				li.style.borderLeft = "5px solid #607D8B"; // Grau/Blau für Spots
-			} else {
-				li.style.borderLeft = "5px solid var(--primary)"; // Grün für Funde
-			}
-
-			li.innerHTML = `
-				<img src="${g[g.length-1].thumb}"> 
-				<div>
-					<strong>${name}</strong><br>
-					<small>${g.length} Eintrag/Einträge</small>
-				</div>
-			`;
-			li.onclick = () => openDetail(name, g);
-			listEl.appendChild(li);
-		});
-	}
-
-    function openWiki(name) {
-        window.open(`https://www.google.com/search?q=site:123pilzsuche.de+${encodeURIComponent(name)}`, '_blank');
+        const listEl = document.getElementById('mushroom-list');
+        listEl.innerHTML = '';
+        const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
+        
+        Object.keys(groups).sort().forEach(name => {
+            const g = groups[name];
+            const li = document.createElement('li'); li.className = 'list-item';
+            const isSpot = g.every(e => e.type === 'spot');
+            li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
+            li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
+            li.onclick = () => openDetail(name, g);
+            listEl.appendChild(li);
+        });
     }
 
     async function openDetail(name, group) {
-        const titleEl = document.getElementById('modal-title');
-        titleEl.innerHTML = `${name} <a href="#" class="wiki-link" onclick="openWiki('${name}'); return false;">📖 Wiki</a>`;
-        
+        document.getElementById('modal-title').innerHTML = `${name} <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
         const hist = document.getElementById('detail-history');
         hist.innerHTML = '';
-
-        group.sort((a,b) => b.ts - a.ts).forEach(async e => {
+        group.sort((a,b) => b.ts - a.ts).forEach(e => {
             const div = document.createElement('div');
             div.style.padding = "10px"; div.style.borderBottom = "1px solid #eee";
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between;">
-                    <strong>📍 ${e.location}</strong>
-                    <small>${new Date(e.ts).toLocaleDateString()}</small>
-                </div>
-                <div style="font-size:0.8rem; color:#666; margin-top:4px;">${e.info || ''}</div>
-                <button style="margin-top:5px; font-size:0.7rem;" onclick="jumpTo(${e.lat}, ${e.lng})">Auf Karte zeigen</button>
-            `;
+            div.innerHTML = `<div style="display:flex;justify-content:space-between"><strong>📍 ${e.location}</strong><small>${new Date(e.ts).toLocaleDateString()}</small></div><div style="font-size:0.8rem;color:#666">${e.info || ''}</div><button style="margin-top:5px;font-size:0.7rem" onclick="jumpTo(${e.lat},${e.lng})">Zeigen</button>`;
             hist.appendChild(div);
         });
         toggleModal('detail-modal');
     }
 
-    function toggleModal(id) { 
-        const m = document.getElementById(id); 
-        m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; 
-    }
+    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex') ? 'none' : 'flex'; }
+    function jumpTo(lat, lng) { toggleModal('detail-modal'); map.flyTo([lat, lng], 17); }
+    async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
+    async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
-    function jumpTo(lat, lng) { 
-        toggleModal('detail-modal'); 
-        map.flyTo([lat, lng], 17); 
-    }
-
-    async function exportData() {
-        const e = await idb.getAll('entries'), p = await idb.getAll('photos');
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})]));
-        a.download = `pilz_backup.json`; a.click();
-    }
-
-    async function importData(i) {
-        const r = new FileReader();
-        r.onload = async e => {
-            const d = JSON.parse(e.target.result);
-            for(let x of d.entries) await idb.put('entries', x);
-            for(let y of d.photos) await idb.put('photos', y);
-            location.reload();
-        };
-        r.readAsText(i.files[0]);
-    }
-
-    window.onload = async () => { 
-        await openDB(); 
-        entries = await idb.getAll('entries'); 
-        updateUI(); 
-    };
-
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('./sw.js');
-    }
+    window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
+    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
 </script>
 </body>
 </html>
