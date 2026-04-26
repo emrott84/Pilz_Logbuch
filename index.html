@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pilz Logbuch v5.3</title>
+    <title>Pilz Logbuch v5.4</title>
     <link rel="manifest" href="./manifest.json">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -15,146 +15,128 @@
         body { margin: 0; padding: 0; background: var(--bg); font-family: -apple-system, sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
         #app-container { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; }
         #map { height: 45vh; min-height: 250px; width: 100%; z-index: 1; flex-shrink: 0; position: relative; }
-        
         .gps-fab { position: absolute; bottom: 20px; right: 10px; z-index: 1000; background: white; width: 42px; height: 42px; border-radius: 8px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; font-size: 22px; border: 1px solid #ccc; }
-
         #ui-content { padding: 12px; background: var(--bg); flex: 1; }
         .type-switch { display: flex; background: #e0e0e0; border-radius: 10px; margin-bottom: 12px; padding: 3px; gap: 4px; }
-        .type-switch label { flex: 1; text-align: center; cursor: pointer; border-radius: 8px; font-size: 0.9rem; padding: 8px 0; transition: 0.2s; }
+        .type-switch label { flex: 1; text-align: center; cursor: pointer; border-radius: 8px; font-size: 0.9rem; padding: 8px 0; }
         .type-switch input { display: none; }
         .type-switch input:checked + span { background: var(--primary); color: white; display: block; border-radius: 7px; margin: -4px; padding: 8px 0; font-weight: bold; }
         .type-switch.spot-active input:checked + span { background: var(--spot); }
-
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
         input[type="text"], textarea { width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 8px; font-size: 0.95rem; box-sizing: border-box; }
         textarea { height: 60px; resize: none; }
-        
         .action-row { display: flex; gap: 8px; }
         .icon-btn { flex: 0 0 50px; height: 50px; background: #607D8B; border-radius: 8px; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
         .save-btn { flex: 1; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
-
-        #search-input { margin-bottom: 10px; }
         #mushroom-list { list-style: none; padding: 0; margin: 0; }
         .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
-
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
         .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
-        
-        .history-entry { padding: 12px; border-bottom: 1px solid #eee; position: relative; }
-        .btn-delete { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-top: 8px; }
-        .btn-jump { background: #eee; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; margin-right: 5px; }
-        
+        .btn-delete { background: var(--danger); color: white; border: none; padding: 8px; border-radius: 6px; cursor: pointer; }
         .hidden { display: none; }
     </style>
 </head>
 <body>
-
 <div id="app-container">
     <div id="map"><div class="gps-fab" onclick="locateUser()">🎯</div></div>
-
     <div id="ui-content">
         <div class="type-switch" id="main-switch">
-            <label><input type="radio" name="entry-type" value="fund" checked onchange="updateUI()"><span>🍄 Fund</span></label>
-            <label><input type="radio" name="entry-type" value="spot" onchange="updateUI()"><span>📍 Spot</span></label>
+            <label><input type="radio" name="entry-type" value="fund" checked onchange="updateSwitchColor()"><span>🍄 Fund</span></label>
+            <label><input type="radio" name="entry-type" value="spot" onchange="updateSwitchColor()"><span>📍 Spot</span></label>
         </div>
-
         <div class="card">
-            <input type="text" id="input-name" placeholder="Name (z.B. Steinpilz)">
-            <input type="text" id="input-location" placeholder="Ort / Stelle">
-            <textarea id="input-info" placeholder="Habitat, Bäume, Boden..."></textarea>
+            <input type="text" id="input-name" placeholder="Name">
+            <input type="text" id="input-location" placeholder="Ort">
+            <textarea id="input-info" placeholder="Info..."></textarea>
             <div class="action-row">
                 <button class="icon-btn" onclick="document.getElementById('camera-input').click()">📷</button>
                 <input type="file" id="camera-input" class="hidden" accept="image/*" capture="environment" onchange="handleImage(this)">
-                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Eintrag speichern</button>
+                <button id="main-save-btn" class="save-btn" onclick="saveEntry()">📍 Speichern</button>
             </div>
-            <div id="preview-container" style="display:none; color:var(--accent); font-size:0.8rem; margin-top:5px;">✔ Foto bereit</div>
+            <div id="preview-container" style="display:none; color:var(--accent); margin-top:5px;">✔ Foto bereit</div>
         </div>
-
-        <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()">
+        <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; margin-bottom:10px; box-sizing:border-box;">
         <ul id="mushroom-list"></ul>
-        
-        <div style="text-align:center; padding: 30px 0; opacity: 0.4; font-size: 0.7rem;">
+        <div style="text-align:center; padding: 20px; opacity: 0.4; font-size: 0.7rem;">
             <span onclick="exportData()">Backup</span> | <span onclick="document.getElementById('import-file').click()">Import</span>
-            <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
+            <input type="file" id="import-file" class="hidden" onchange="importData(this)">
         </div>
     </div>
 </div>
-
 <div id="detail-modal" class="full-modal">
-    <div class="modal-header"><h3 id="modal-title" style="margin:0;">Details</h3><button onclick="toggleModal('detail-modal')">✕</button></div>
+    <div class="modal-header"><h3 id="modal-title" style="margin:0;"></h3><button onclick="toggleModal('detail-modal')">✕</button></div>
     <div id="detail-history" class="tab-content"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const APP_VERSION = '5.3'; 
     let db, entries = [], markersOnMap = [], currentImage = null;
+    const APP_VERSION = '5.4';
 
-    // --- DATABASE ---
     async function openDB() {
-        return new Promise(res => {
-            const req = indexedDB.open('PilzLogDB_v4', 1);
-            req.onsuccess = e => { db = e.target.result; res(); };
-            req.onupgradeneeded = e => {
+        return new Promise((resolve) => {
+            const request = indexedDB.open('PilzLogDB_v4', 1);
+            request.onsuccess = (e) => { db = e.target.result; resolve(); };
+            request.onupgradeneeded = (e) => {
                 const d = e.target.result;
-                if(!d.objectStoreNames.contains('entries')) d.createObjectStore('entries', {keyPath:'id'});
-                if(!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', {keyPath:'id'});
+                if (!d.objectStoreNames.contains('entries')) d.createObjectStore('entries', { keyPath: 'id' });
+                if (!d.objectStoreNames.contains('photos')) d.createObjectStore('photos', { keyPath: 'id' });
             };
         });
     }
 
     const idb = {
-        getAll: s => new Promise(r => { const req = db.transaction(s).objectStore(s).getAll(); req.onsuccess = () => r(req.result); }),
-        put: (s, o) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).put(o); req.onsuccess = () => r(); }),
-        del: (s, id) => new Promise(r => { const req = db.transaction(s, 'readwrite').objectStore(s).delete(id); req.onsuccess = () => r(); })
+        getAll: (s) => new Promise((r) => { const tx = db.transaction(s, 'readonly'); const store = tx.objectStore(s); const req = store.getAll(); req.onsuccess = () => r(req.result); }),
+        put: (s, o) => new Promise((r) => { const tx = db.transaction(s, 'readwrite'); const store = tx.objectStore(s); const req = store.put(o); req.onsuccess = () => r(); }),
+        del: (s, id) => new Promise((r) => { const tx = db.transaction(s, 'readwrite'); const store = tx.objectStore(s); const req = store.delete(id); req.onsuccess = () => r(); })
     };
 
-    // --- MAP ---
-    let map = L.map('map').setView([51.16, 10.45], 6);
+    let map = L.map('map').setView([50.11, 8.68], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
 
     function locateUser() {
-        navigator.geolocation.getCurrentPosition(pos => {
-            map.flyTo([pos.coords.latitude, pos.coords.longitude], 17);
-        }, () => alert("GPS Fehler"), {enableHighAccuracy:true});
+        navigator.geolocation.getCurrentPosition(p => map.flyTo([p.coords.latitude, p.coords.longitude], 17), () => alert("GPS-Fehler"), { enableHighAccuracy: true });
     }
 
-    // --- LOGIC ---
+    function updateSwitchColor() {
+        const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
+        document.getElementById('main-switch').classList.toggle('spot-active', isSpot);
+    }
+
     function handleImage(input) {
         if (input.files[0]) {
-            const r = new FileReader();
-            r.onload = e => { currentImage = e.target.result; document.getElementById('preview-container').style.display = 'block'; };
-            r.readAsDataURL(input.files[0]);
+            const reader = new FileReader();
+            reader.onload = (e) => { currentImage = e.target.result; document.getElementById('preview-container').style.display = 'block'; };
+            reader.readAsDataURL(input.files[0]);
         }
     }
 
     async function saveEntry() {
         const name = document.getElementById('input-name').value;
         const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
+        if (!name) return alert("Name fehlt");
         const btn = document.getElementById('main-save-btn');
-        if(!name) return alert("Bitte Name eingeben");
+        btn.disabled = true; btn.innerText = "GPS...";
 
-        btn.disabled = true; btn.innerText = "⌛ GPS...";
-
-        navigator.geolocation.getCurrentPosition(async pos => {
+        navigator.geolocation.getCurrentPosition(async (pos) => {
             const id = Date.now().toString();
             let thumb = 'icon-192.png';
-            if(currentImage) {
-                await idb.put('photos', {id: id+'_p', full: currentImage});
+            if (currentImage) {
+                await idb.put('photos', { id: id + '_p', full: currentImage });
                 thumb = await createThumb(currentImage);
             }
-            await idb.put('entries', {
+            const entry = {
                 id, name, thumb, ts: Date.now(),
                 lat: pos.coords.latitude, lng: pos.coords.longitude,
-                location: document.getElementById('input-location').value || 'Waldpunkt',
+                location: document.getElementById('input-location').value || 'Wald',
                 info: document.getElementById('input-info').value,
                 type: isSpot ? 'spot' : 'fund'
-            });
-            // Reset & Reload
+            };
+            await idb.put('entries', entry);
             location.reload();
-        }, () => { alert("Kein GPS!"); btn.disabled = false; btn.innerText = "📍 Eintrag speichern"; }, {enableHighAccuracy:true});
+        }, () => { alert("GPS Fehler"); btn.disabled = false; }, { enableHighAccuracy: true });
     }
 
     async function createThumb(base64) {
@@ -162,36 +144,29 @@
             const img = new Image(); img.src = base64;
             img.onload = () => {
                 const c = document.createElement('canvas'); const ctx = c.getContext('2d');
-                c.width = 100; c.height = 100; ctx.drawImage(img,0,0,100,100); r(c.toDataURL('image/jpeg', 0.6));
+                c.width = 100; c.height = 100; ctx.drawImage(img, 0, 0, 100, 100); r(c.toDataURL('image/jpeg', 0.6));
             };
         });
     }
 
     function updateUI() {
-        const q = document.getElementById('search-input').value.toLowerCase();
-        const isSpotMode = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
-        document.getElementById('main-switch').classList.toggle('spot-active', isSpotMode);
-
-        const filtered = entries.filter(e => e.name.toLowerCase().includes(q));
-        
+        const query = document.getElementById('search-input').value.toLowerCase();
+        const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
         markersOnMap.forEach(m => map.removeLayer(m));
         markersOnMap = filtered.map(e => {
             const m = L.marker([e.lat, e.lng]).addTo(map);
-            if(m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
-            return m.bindPopup(`<b>${e.type==='spot'?'📍':'🍄'} ${e.name}</b>`);
+            if (e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
+            return m.bindPopup(`<b>${e.name}</b>`);
         });
-
         const listEl = document.getElementById('mushroom-list');
         listEl.innerHTML = '';
-        const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
-        
-        Object.keys(groups).sort().forEach(n => {
-            const g = groups[n];
+        const groups = filtered.reduce((acc, e) => { if (!acc[e.name]) acc[e.name] = []; acc[e.name].push(e); return acc; }, {});
+        Object.keys(groups).sort().forEach(name => {
+            const g = groups[name];
             const li = document.createElement('li'); li.className = 'list-item';
-            const allSpots = g.every(e => e.type === 'spot');
-            li.style.borderLeft = allSpots ? "5px solid var(--spot)" : "5px solid var(--primary)";
-            li.innerHTML = `<img src="${g[0].thumb}"><div><strong>${n}</strong><br><small>${g.length} Eintrag/Einträge</small></div>`;
-            li.onclick = () => openDetail(n, g);
+            li.style.borderLeft = g.every(e => e.type === 'spot') ? "5px solid var(--spot)" : "5px solid var(--primary)";
+            li.innerHTML = `<img src="${g[0].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
+            li.onclick = () => openDetail(name, g);
             listEl.appendChild(li);
         });
     }
@@ -200,75 +175,47 @@
         document.getElementById('modal-title').innerText = name;
         const hist = document.getElementById('detail-history');
         hist.innerHTML = '';
-        group.sort((a,b) => b.ts - a.ts).forEach(e => {
-            const div = document.createElement('div');
-            div.className = 'history-entry';
-            div.innerHTML = `
-                <div style="display:flex; justify-content:space-between">
-                    <strong>${new Date(e.ts).toLocaleDateString()} - ${e.location}</strong>
-                    <span>${e.type==='spot'?'📍':'🍄'}</span>
-                </div>
-                <p style="font-size:0.85rem; color:#555; margin: 5px 0;">${e.info || 'Keine Zusatzinfo'}</p>
-                <button class="btn-jump" onclick="jumpTo(${e.lat},${e.lng})">Auf Karte</button>
-                <button class="btn-delete" onclick="deleteEntry('${e.id}')">Löschen</button>
-            `;
-            hist.appendChild(div);
+        group.sort((a, b) => b.ts - a.ts).forEach(e => {
+            const d = document.createElement('div'); d.style.padding = "10px"; d.style.borderBottom = "1px solid #eee";
+            d.innerHTML = `<strong>${new Date(e.ts).toLocaleDateString()}</strong> - ${e.location}<br><small>${e.info || ''}</small><br>
+                <button onclick="jumpTo(${e.lat},${e.lng})" style="margin-top:5px; padding:5px;">📍</button>
+                <button class="btn-delete" onclick="deleteEntry('${e.id}')">Löschen</button>`;
+            hist.appendChild(d);
         });
         toggleModal('detail-modal');
     }
 
     async function deleteEntry(id) {
-        if(confirm("Diesen Eintrag wirklich löschen?")) {
-            await idb.del('entries', id);
-            // Falls ein Foto existiert, theoretisch auch löschen, aber idb.del('photos', id+'_p') optional
-            location.reload();
-        }
+        if (confirm("Löschen?")) { await idb.del('entries', id); location.reload(); }
     }
 
-    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display==='flex')?'none':'flex'; }
+    function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
     function jumpTo(lat, lng) { toggleModal('detail-modal'); map.flyTo([lat, lng], 17); }
 
-    // --- BACKUP (KOMPLETT) ---
     async function exportData() {
-        const e = await idb.getAll('entries');
-        const p = await idb.getAll('photos');
-        const backup = { entries: e, photos: p, version: APP_VERSION };
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(new Blob([JSON.stringify(backup)], {type:'application/json'}));
-        a.download = `pilzlog_backup_${new Date().toISOString().slice(0,10)}.json`;
-        a.click();
+        const e = await idb.getAll('entries'); const p = await idb.getAll('photos');
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({ entries: e, photos: p })]));
+        a.download = "backup.json"; a.click();
     }
 
     async function importData(input) {
-        const r = new FileReader();
-        r.onload = async event => {
-            try {
-                const data = JSON.parse(event.target.result);
-                if(data.entries) for(let x of data.entries) await idb.put('entries', x);
-                if(data.photos) for(let y of data.photos) await idb.put('photos', y);
-                alert("Import erfolgreich!");
-                location.reload();
-            } catch(e) { alert("Fehler beim Import: " + e); }
-        };
-        r.readAsText(input.files[0]);
+        const reader = new FileReader(); reader.onload = async (e) => {
+            const d = JSON.parse(e.target.result);
+            if (d.entries) for (let x of d.entries) await idb.put('entries', x);
+            if (d.photos) for (let y of d.photos) await idb.put('photos', y);
+            location.reload();
+        }; reader.readAsText(input.files[0]);
     }
 
-    // --- INIT & ABRISSBIRNE ---
     window.onload = async () => {
         await openDB();
         entries = await idb.getAll('entries');
         updateUI();
-
         const lastV = localStorage.getItem('app_v');
-        if(lastV && lastV !== APP_VERSION) {
-            console.log("Version Upgrade. Clearing Cache...");
-            const names = await caches.keys();
-            for(let n of names) await caches.delete(n);
-            localStorage.setItem('app_v', APP_VERSION);
-            location.reload();
-        } else {
-            localStorage.setItem('app_v', APP_VERSION);
-        }
+        if (lastV && lastV !== APP_VERSION) {
+            const keys = await caches.keys(); for (let k of keys) await caches.delete(k);
+            localStorage.setItem('app_v', APP_VERSION); location.reload();
+        } else localStorage.setItem('app_v', APP_VERSION);
     };
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js');
 </script>

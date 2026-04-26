@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pilzlog-v5.4';
+const CACHE_NAME = 'pilzlog-v5.5';
 self.addEventListener('install', event => {
     self.skipWaiting(); // Zwingt den neuen SW, sofort aktiv zu werden
 });
