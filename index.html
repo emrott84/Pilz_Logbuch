@@ -353,45 +353,39 @@
         });
     }
 
-    function updateUI() {
+	function updateUI() {
 		const query = document.getElementById('search-input').value.toLowerCase();
 		
+		// 1. Filtern der Einträge
 		const filtered = entries.filter(e => {
-			// 1. Grundsätzliche Typ-Prüfung (Ist der Filter für diesen Typ an?)
 			if (!activeFilters[e.type]) return false;
 
-			// 2. Spezifische Such-Logik
 			if (e.type === 'fund') {
-				// Pilze: Suche nur im Namen
 				return e.name.toLowerCase().includes(query);
 			} else {
-				// Spots: Suche in Ort und Info
 				const inLocation = e.location.toLowerCase().includes(query);
 				const inInfo = e.info ? e.info.toLowerCase().includes(query) : false;
 				return inLocation || inInfo;
 			}
-		});
-	}
-		
-		// Bestehende Marker entfernen
+		}); // Hier endet der Filter korrekt
+
+		// 2. Bestehende Marker von der Karte entfernen
 		markersOnMap.forEach(m => map.removeLayer(m));
 		
+		// 3. Neue Marker für gefilterte Ergebnisse setzen
 		markersOnMap = filtered.map(e => {
 			const m = L.marker([e.lat, e.lng]).addTo(map);
 			
-			// Farbe für "Spots" anpassen (bläulich)
 			if (m._icon && e.type === 'spot') m._icon.style.filter = "hue-rotate(140deg)";
 			
-			// Datum schön formatieren
 			const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
 				day: '2-digit', month: '2-digit', year: 'numeric' 
 			});
 
-			// Popup-Inhalt mit Thumbnail zusammenbauen
 			const popupContent = `
 				<div style="text-align:center; min-width: 100px;">
 					<img src="${e.thumb}" 
-						 onclick="showFullPhoto('${e.photoId}')" 
+						 onclick="showFullPhotoFromGallery('${e.photoId}')" 
 						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
 					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
@@ -401,29 +395,33 @@
 			return m.bindPopup(popupContent);
 		});
 
-        const listEl = document.getElementById('mushroom-list');
-        listEl.innerHTML = '';
-        const groups = filtered.reduce((acc, e) => { if(!acc[e.name]) acc[e.name]=[]; acc[e.name].push(e); return acc; }, {});
-        
-        Object.keys(groups).sort().forEach(name => {
-            const g = groups[name];
-            const li = document.createElement('li'); li.className = 'list-item';
-            const isSpot = g.every(e => e.type === 'spot');
-            li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
-            li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
-            li.onclick = () => openDetail(name, g);
-            listEl.appendChild(li);
-        });
+		// 4. Liste unter der Karte befüllen
+		const listEl = document.getElementById('mushroom-list');
+		listEl.innerHTML = '';
+		const groups = filtered.reduce((acc, e) => { 
+			if(!acc[e.name]) acc[e.name] = []; 
+			acc[e.name].push(e); 
+			return acc; 
+		}, {});
 		
-		// NEU: Popups schließen bei Klick irgendwo in die App (außer auf Marker)
-		document.addEventListener('click', (ev) => {
-			// Wenn das Ziel nicht der Marker oder ein Popup ist, schließen wir alle Popups
-			if (!ev.target.closest('.leaflet-marker-icon') && !ev.target.closest('.leaflet-popup')) {
-				map.closePopup();
-			}
-		}, true); // "true" für Capture-Phase, damit es vor anderen Events greift
-    }
-	
+		Object.keys(groups).sort().forEach(name => {
+			const g = groups[name];
+			const li = document.createElement('li'); 
+			li.className = 'list-item';
+			const isSpot = g.every(e => e.type === 'spot');
+			li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
+			li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
+			li.onclick = () => openDetail(name, g);
+			listEl.appendChild(li);
+		});
+	} // Hier endet updateUI erst wirklich!
+
+	// Der Klick-Listener kommt AUSSERHALB der Funktion, da er nur einmal registriert werden muss
+	document.addEventListener('click', (ev) => {
+		if (!ev.target.closest('.leaflet-marker-icon') && !ev.target.closest('.leaflet-popup')) {
+			if(typeof map !== 'undefined') map.closePopup();
+		}
+	}, true);
 	async function showFullPhotoFromGallery(photoId) {
 		if (!photoId) return;
 		currentPhotoIndex = currentPhotoGallery.indexOf(photoId);
