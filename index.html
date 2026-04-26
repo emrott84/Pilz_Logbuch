@@ -117,6 +117,43 @@
 			transition: background 0.2s;
 		}
 		.pin-btn:active { background: #e0e0e0; }
+		
+		/* Tab Navigation */
+		.modal-tabs { display: flex; background: var(--primary); border-bottom: 2px solid rgba(255,255,255,0.1); }
+		.tab-btn { flex: 1; padding: 12px; border: none; background: none; color: white; opacity: 0.6; cursor: pointer; font-weight: bold; }
+		.tab-btn.active { opacity: 1; border-bottom: 3px solid var(--accent); }
+
+		/* Bilder Grid */
+		.photo-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+			gap: 8px;
+			padding: 12px;
+		}
+		.grid-img {
+			width: 100%;
+			aspect-ratio: 1;
+			object-fit: cover;
+			border-radius: 8px;
+			cursor: pointer;
+			border: 1px solid #ddd;
+		}
+
+		/* Lightbox Navigation Pfeile */
+		.lb-nav {
+			position: absolute;
+			top: 50%;
+			transform: translateY(-50%);
+			background: rgba(0,0,0,0.3);
+			color: white;
+			border: none;
+			font-size: 2rem;
+			padding: 20px 10px;
+			cursor: pointer;
+			z-index: 3100;
+		}
+		.lb-prev { left: 0; border-radius: 0 8px 8px 0; }
+		.lb-next { right: 0; border-radius: 8px 0 0 8px; }
     </style>
 </head>
 <body>
@@ -165,13 +202,31 @@
 </div>
 
 <div id="detail-modal" class="full-modal">
-    <div class="modal-header"><h3 id="modal-title" style="margin:0;">Details</h3><button onclick="toggleModal('detail-modal')">✕</button></div>
+    <div class="modal-header">
+        <h3 id="modal-title" style="margin:0;">Details</h3>
+        <button onclick="toggleModal('detail-modal')">✕</button>
+    </div>
+    
+    <div class="modal-tabs">
+        <button id="tab-list-btn" class="tab-btn active" onclick="switchTab('list')">📋 Liste</button>
+        <button id="tab-grid-btn" class="tab-btn" onclick="switchTab('grid')">🖼️ Galerie</button>
+    </div>
+
     <div id="detail-history" class="tab-content"></div>
+    <div id="detail-grid" class="tab-content hidden"></div>
+</div>
+
+<div id="lightbox" onclick="if(event.target.tagName !== 'BUTTON') this.style.display='none'">
+    <button class="lb-nav lb-prev" onclick="changeLightboxImg(-1)">❮</button>
+    <img id="lightbox-img" src="" alt="Vollbild">
+    <button class="lb-nav lb-next" onclick="changeLightboxImg(1)">❯</button>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
     let db, entries = [], markersOnMap = [], currentImage = null;
+	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
+	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
 
     async function openDB() {
         return new Promise(res => {
@@ -346,40 +401,60 @@
 			map.closePopup();
 		}
 	}, true);
+	
+	function switchTab(type) {
+		// Blendet die Container ein oder aus
+		document.getElementById('detail-history').classList.toggle('hidden', type !== 'list');
+		document.getElementById('detail-grid').classList.toggle('hidden', type !== 'grid');
+		
+		// Ändert das Aussehen der Buttons (aktiver Tab)
+		document.getElementById('tab-list-btn').classList.toggle('active', type === 'list');
+		document.getElementById('tab-grid-btn').classList.toggle('active', type === 'grid');
+	}
 
     async function openDetail(name, group) {
-		// Titel und Wiki-Link
-		document.getElementById('modal-title').innerHTML = `
-			<div style="display:flex; align-items:center; gap:10px;">
-				${name} 
-				<a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>
-			</div>`;
+		// Titel setzen
+		document.getElementById('modal-title').innerHTML = `<span>${name}</span> <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
 		
 		const hist = document.getElementById('detail-history');
-		hist.innerHTML = '';
+		const grid = document.getElementById('detail-grid');
 		
-		// Sortierung: Neueste Funde oben
-		group.sort((a, b) => b.ts - a.ts).forEach(e => {
-			const dateStr = new Date(e.ts).toLocaleDateString('de-DE', { 
-				day: '2-digit', month: '2-digit', year: 'numeric' 
-			});
+		// Inhalt leeren
+		hist.innerHTML = '';
+		grid.innerHTML = '<div class="photo-grid"></div>';
+		const gridContainer = grid.querySelector('.photo-grid');
 
+		// WICHTIG: Liste aller Photo-IDs für die Galerie-Navigation erstellen
+		currentPhotoGallery = group.filter(e => e.photoId).map(e => e.photoId);
+
+		// Einträge sortieren und verarbeiten
+		group.sort((a,b) => b.ts - a.ts).forEach((e) => {
+			// Teil A: Listen-Eintrag für Tab 1
+			const dateStr = new Date(e.ts).toLocaleDateString('de-DE');
 			const item = document.createElement('div');
 			item.className = 'history-item';
 			item.innerHTML = `
-				<img src="${e.thumb}" class="history-thumb" onclick="showFullPhoto('${e.photoId}')">
-				
+				<img src="${e.thumb}" class="history-thumb" onclick="showFullPhotoFromGallery('${e.photoId}')">
 				<div class="history-info">
 					<strong>${e.location}</strong>
 					<small>📅 ${dateStr}</small>
 					${e.info ? `<p>${e.info}</p>` : ''}
 				</div>
-				
-				<button class="pin-btn" onclick="jumpTo(${e.lat}, ${e.lng})" title="Auf Karte zeigen">📍</button>
+				<button class="pin-btn" onclick="jumpTo(${e.lat}, ${e.lng})">📍</button>
 			`;
 			hist.appendChild(item);
+
+			// Teil B: Bild für Tab 2 (Grid) hinzufügen
+			if(e.photoId) {
+				const img = document.createElement('img');
+				img.className = 'grid-img';
+				img.src = e.thumb;
+				img.onclick = () => showFullPhotoFromGallery(e.photoId);
+				gridContainer.appendChild(img);
+			}
 		});
 		
+		switchTab('list'); // Beim Öffnen immer zuerst die Liste zeigen
 		toggleModal('detail-modal');
 	}
 
@@ -412,6 +487,39 @@
 				};
 			};
 		});
+	}
+	
+	// Öffnet die Lightbox und merkt sich die Position des Bildes
+	async function showFullPhotoFromGallery(photoId) {
+		if (!photoId) return;
+		currentPhotoIndex = currentPhotoGallery.indexOf(photoId);
+		updateLightbox();
+		document.getElementById('lightbox').style.display = 'flex';
+	}
+
+	// Lädt das aktuelle Bild in die Lightbox und steuert die Pfeile
+	async function updateLightbox() {
+		const photoId = currentPhotoGallery[currentPhotoIndex];
+		const photoData = await idb.get('photos', photoId); // Nutzt den idb.get Helper von vorhin
+		
+		if (photoData) {
+			document.getElementById('lightbox-img').src = photoData.full;
+		}
+		
+		// Pfeile nur einblenden, wenn mehr als ein Bild existiert
+		const showNav = currentPhotoGallery.length > 1 ? 'block' : 'none';
+		document.querySelectorAll('.lb-nav').forEach(btn => btn.style.display = showNav);
+	}
+
+	// Schaltet zum nächsten oder vorherigen Bild (+1 oder -1)
+	function changeLightboxImg(direction) {
+		currentPhotoIndex += direction;
+		
+		// Endlos-Schleife: Wenn man am Ende ist, kommt wieder das erste Bild
+		if (currentPhotoIndex >= currentPhotoGallery.length) currentPhotoIndex = 0;
+		if (currentPhotoIndex < 0) currentPhotoIndex = currentPhotoGallery.length - 1;
+		
+		updateLightbox();
 	}
 </script>
 </body>
