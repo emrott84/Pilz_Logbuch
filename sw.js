@@ -1,4 +1,11 @@
-const CACHE_NAME = 'pilzlog-v5.2';
+const CACHE_NAME = 'pilzlog-v5.3';
+self.addEventListener('install', event => {
+    self.skipWaiting(); // Zwingt den neuen SW, sofort aktiv zu werden
+});
+
+self.addEventListener('activate', event => {
+    event.waitUntil(clients.claim()); // Übernimmt sofort die Kontrolle über alle offenen Fenster
+});
 const ASSETS = [
   '/Pilz_Logbuch/',
   '/Pilz_Logbuch/index.html',

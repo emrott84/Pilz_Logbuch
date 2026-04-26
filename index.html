@@ -250,7 +250,21 @@
     async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js'); }
+    if ('serviceWorker' in navigator) {
+		navigator.serviceWorker.register('./sw.js').then(reg => {
+			reg.onupdatefound = () => {
+				const installingWorker = reg.installing;
+				installingWorker.onstatechange = () => {
+					if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+						// Eine neue Version wurde gefunden und installiert!
+						if (confirm("Neue App-Version verfügbar. Jetzt neu laden?")) {
+							window.location.reload();
+						}
+					}
+				};
+			};
+		});
+	}
 </script>
 </body>
 </html>
