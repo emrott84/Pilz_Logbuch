@@ -342,7 +342,7 @@
 			const popupContent = `
 				<div style="text-align:center; min-width: 100px;">
 					<img src="${e.thumb}" 
-						 onclick="showFullPhoto('${e.photoId}')" 
+						 onclick="showFullPhotoFromGallery('${e.photoId}')"
 						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
 					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
@@ -377,14 +377,23 @@
 	
 	async function showFullPhotoFromGallery(photoId) {
 		if (!photoId) return;
+
+		// FIX: Wenn die ID nicht in der aktuellen Galerie ist (z.B. Klick von der Karte),
+		// dann setzen wir die Galerie einfach auf dieses eine Bild fest.
+		if (!currentPhotoGallery.includes(photoId)) {
+			currentPhotoGallery = [photoId];
+		}
+
 		currentPhotoIndex = currentPhotoGallery.indexOf(photoId);
-		updateLightbox();
+		await updateLightbox(); // Sicherstellen, dass das Bild geladen ist, bevor wir zeigen
 		
 		const lb = document.getElementById('lightbox');
 		lb.style.display = 'flex';
 		
-		// Auch für die Lightbox einen History-Eintrag erstellen
-		history.pushState({ lightboxOpen: true }, "");
+		// History-Eintrag für die Zurück-Taste
+		if (!history.state || !history.state.lightboxOpen) {
+			history.pushState({ lightboxOpen: true }, "");
+		}
 	}
 
 	// Der "aufgeweichte" Listener
