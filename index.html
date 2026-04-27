@@ -158,10 +158,6 @@
 </head>
 <body>
 
-<div id="lightbox" onclick="this.style.display='none'">
-    <img id="lightbox-img" src="" alt="Vollbild">
-</div>
-
 <div id="app-container">
     <div id="map">
         <div class="gps-fab" onclick="locateUser()">🎯</div>
@@ -346,7 +342,7 @@
 			const popupContent = `
 				<div style="text-align:center; min-width: 100px;">
 					<img src="${e.thumb}" 
-						 onclick="showFullPhoto('${e.photoId}')" 
+						 onclick="showFullPhotoFromGallery('${e.photoId}')"
 						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
 					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
@@ -488,7 +484,9 @@
 				m.openPopup();
 			}
 		});
-	}    async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
+	}    
+	
+	async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
     async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
@@ -506,14 +504,6 @@
 				};
 			};
 		});
-	}
-	
-	// Öffnet die Lightbox und merkt sich die Position des Bildes
-	async function showFullPhotoFromGallery(photoId) {
-		if (!photoId) return;
-		currentPhotoIndex = currentPhotoGallery.indexOf(photoId);
-		updateLightbox();
-		document.getElementById('lightbox').style.display = 'flex';
 	}
 
 	// Lädt das aktuelle Bild in die Lightbox und steuert die Pfeile
