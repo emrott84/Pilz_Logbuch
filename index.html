@@ -533,19 +533,40 @@
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
 		if ('serviceWorker' in navigator) {
-		navigator.serviceWorker.register('./sw.js').then(reg => {
-			reg.onupdatefound = () => {
-				const installingWorker = reg.installing;
-				installingWorker.onstatechange = () => {
-					if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-						// Eine neue Version wurde gefunden und installiert!
-						if (confirm("Neue App-Version verfügbar. Jetzt neu laden?")) {
-							window.location.reload();
+			navigator.serviceWorker.register('./sw.js').then(reg => {
+				
+				// 1. Falls bereits ein Update bereitsteht (im Hintergrund geladen)
+				if (reg.waiting) {
+					askUserToUpdate(reg.waiting);
+				}
+
+				// 2. Falls während der Laufzeit ein Update gefunden wird
+				reg.onupdatefound = () => {
+					const installingWorker = reg.installing;
+					installingWorker.onstatechange = () => {
+						if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+							askUserToUpdate(installingWorker);
 						}
-					}
+					};
 				};
-			};
-		});
+			});
+
+			// 3. Wenn der neue Service Worker übernimmt -> Seite neu laden
+			let refreshing = false;
+			navigator.serviceWorker.addEventListener('controllerchange', () => {
+				if (!refreshing) {
+					window.location.reload();
+					refreshing = true;
+				}
+			});
+		}
+
+		// Hilfsfunktion für den Dialog
+		function askUserToUpdate(worker) {
+			if (confirm("Neue Version verfügbar! Jetzt aktualisieren?")) {
+				worker.postMessage({ action: 'skipWaiting' });
+			}
+		}
 	}
 
 	// Lädt das aktuelle Bild in die Lightbox und steuert die Pfeile
