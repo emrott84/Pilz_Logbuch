@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pilzlog-v6.5';
+const CACHE_NAME = 'pilzlog-v6.6';
 const ASSETS = [
   '/Pilz_Logbuch/',
   '/Pilz_Logbuch/index.html',

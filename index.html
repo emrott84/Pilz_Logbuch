@@ -342,7 +342,7 @@
 			const popupContent = `
 				<div style="text-align:center; min-width: 100px;">
 					<img src="${e.thumb}" 
-						 onclick="showFullPhotoFromGallery('${e.photoId}')"
+						 onclick="showFullPhoto('${e.photoId}')" 
 						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
 					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
