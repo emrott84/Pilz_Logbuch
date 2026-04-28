@@ -348,10 +348,11 @@
 		const query = document.getElementById('search-input').value.toLowerCase();
 		const filtered = entries.filter(e => {
 			const matchesSearch = e.name.toLowerCase().includes(query);
-			const matchesFilter = activeFilters[e.type]; // Prüft ob 'fund' oder 'spot' aktiv ist
+			// Wenn e.type fehlt, behandeln wir ihn wie einen 'fund' (oder zeigen ihn immer an)
+			const entryType = e.type || 'fund'; 
+			const matchesFilter = activeFilters[entryType];
 			return matchesSearch && matchesFilter;
-		});
-		
+		});		
 		// Bestehende Marker entfernen
 		markersOnMap.forEach(m => map.removeLayer(m));
 		
