@@ -450,8 +450,7 @@
 
     async function openDetail(name, group) {
 		// Titel setzen
-		document.getElementById('modal-title').innerHTML = `<span>${name}</span> <a href="#" class="wiki-link" onclick="window.open('https://www.google.com/search?q=site:123pilzsuche.de+${name}')">Wiki</a>`;
-		
+		document.getElementById('modal-title').innerHTML = `<span>${name}</span> <a href="#" class="wiki-link" onclick="window.open('https://www.123pilzsuche.de/filter/plz/search.php?q=${encodeURIComponent(name)}')">Wiki</a>`;		
 		const hist = document.getElementById('detail-history');
 		const grid = document.getElementById('detail-grid');
 		
