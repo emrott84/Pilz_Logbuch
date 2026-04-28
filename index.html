@@ -154,16 +154,6 @@
 		}
 		.lb-prev { left: 0; border-radius: 0 8px 8px 0; }
 		.lb-next { right: 0; border-radius: 8px 0 0 8px; }
-		
-		/* Patch: Filter-Buttons Styling */
-		.search-row { display: flex; gap: 8px; align-items: center; }
-		.filter-toggle { 
-			width: 45px; height: 45px; border-radius: 8px; border: 1px solid #ccc; 
-			background: #e0e0e0; font-size: 1.2rem; cursor: pointer; transition: 0.2s;
-			display: flex; align-items: center; justify-content: center;
-		}
-		.filter-toggle.active { background: var(--white); border-color: var(--primary); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-		.filter-toggle:not(.active) { opacity: 0.3; filter: grayscale(1); }
     </style>
 </head>
 <body>
@@ -195,13 +185,9 @@
         </div>
 
         <div class="search-bar-container">
-			<div class="search-row">
-				<input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0; flex: 1;">
-				<button id="btn-filter-fund" class="filter-toggle active" onclick="toggleTypeFilter('fund')">🍄</button>
-				<button id="btn-filter-spot" class="filter-toggle active" onclick="toggleTypeFilter('spot')">📍</button>
-			</div>
-		</div>
-		
+            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0;">
+        </div>
+
         <ul id="mushroom-list"></ul>
         <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
             <button style="background:none; border:none; font-size:0.7rem;" onclick="exportData()">Backup</button>
@@ -237,8 +223,6 @@
     let db, entries = [], markersOnMap = [], currentImage = null;
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
-	let filterShowFund = true;
-	let filterShowSpot = true;
 
     async function openDB() {
         return new Promise(res => {
@@ -338,13 +322,7 @@
 
     function updateUI() {
 		const query = document.getElementById('search-input').value.toLowerCase();
-
-		const filtered = entries.filter(e => {
-			const matchesText = e.name.toLowerCase().includes(query);
-			// Prüft ob der Typ des Eintrags aktuell aktiv geschaltet ist
-			const matchesType = (e.type === 'fund' && filterShowFund) || (e.type === 'spot' && filterShowSpot);
-			return matchesText && matchesType;
-		});
+		const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
 		
 		// Bestehende Marker entfernen
 		markersOnMap.forEach(m => map.removeLayer(m));
@@ -440,17 +418,6 @@
 		document.getElementById('tab-list-btn').classList.toggle('active', type === 'list');
 		document.getElementById('tab-grid-btn').classList.toggle('active', type === 'grid');
 	}
-	
-	function toggleTypeFilter(type) {
-		if (type === 'fund') filterShowFund = !filterShowFund;
-		if (type === 'spot') filterShowSpot = !filterShowSpot;
-		
-		// UI Update der Buttons
-		document.getElementById('btn-filter-fund').classList.toggle('active', filterShowFund);
-		document.getElementById('btn-filter-spot').classList.toggle('active', filterShowSpot);
-		
-		updateUI();
-	}
 
     async function openDetail(name, group) {
 		// Titel setzen
@@ -533,40 +500,19 @@
 
     window.onload = async () => { await openDB(); entries = await idb.getAll('entries'); updateUI(); };
 		if ('serviceWorker' in navigator) {
-			navigator.serviceWorker.register('./sw.js').then(reg => {
-				
-				// 1. Falls bereits ein Update bereitsteht (im Hintergrund geladen)
-				if (reg.waiting) {
-					askUserToUpdate(reg.waiting);
-				}
-
-				// 2. Falls während der Laufzeit ein Update gefunden wird
-				reg.onupdatefound = () => {
-					const installingWorker = reg.installing;
-					installingWorker.onstatechange = () => {
-						if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-							askUserToUpdate(installingWorker);
+		navigator.serviceWorker.register('./sw.js').then(reg => {
+			reg.onupdatefound = () => {
+				const installingWorker = reg.installing;
+				installingWorker.onstatechange = () => {
+					if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+						// Eine neue Version wurde gefunden und installiert!
+						if (confirm("Neue App-Version verfügbar. Jetzt neu laden?")) {
+							window.location.reload();
 						}
-					};
+					}
 				};
-			});
-
-			// 3. Wenn der neue Service Worker übernimmt -> Seite neu laden
-			let refreshing = false;
-			navigator.serviceWorker.addEventListener('controllerchange', () => {
-				if (!refreshing) {
-					window.location.reload();
-					refreshing = true;
-				}
-			});
-		}
-
-		// Hilfsfunktion für den Dialog
-		function askUserToUpdate(worker) {
-			if (confirm("Neue Version verfügbar! Jetzt aktualisieren?")) {
-				worker.postMessage({ action: 'skipWaiting' });
-			}
-		}
+			};
+		});
 	}
 
 	// Lädt das aktuelle Bild in die Lightbox und steuert die Pfeile
