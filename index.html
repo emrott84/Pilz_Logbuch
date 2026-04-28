@@ -185,8 +185,15 @@
         </div>
 
         <div class="search-bar-container">
-            <input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0;">
-        </div>
+			<div style="display: flex; gap: 8px; align-items: center;">
+				<input type="text" id="search-input" placeholder="🔍 Suchen..." onkeyup="updateUI()" style="margin:0; flex: 1;">
+				
+				<div class="filter-toggles" style="display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px;">
+					<button id="filter-fund" onclick="toggleFilter('fund')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">🍄</button>
+					<button id="filter-spot" onclick="toggleFilter('spot')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">📍</button>
+				</div>
+			</div>
+		</div>
 
         <ul id="mushroom-list"></ul>
         <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
@@ -223,6 +230,23 @@
     let db, entries = [], markersOnMap = [], currentImage = null;
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
+	let activeFilters = { fund: true, spot: true }; // Startzustand: Alles sichtbar
+
+	function toggleFilter(type) {
+		activeFilters[type] = !activeFilters[type];
+		
+		// Optisches Feedback der Buttons
+		const btn = document.getElementById('filter-' + type);
+		if (activeFilters[type]) {
+			btn.style.background = 'var(--primary)';
+			btn.style.opacity = '1';
+		} else {
+			btn.style.background = '#ccc';
+			btn.style.opacity = '0.6';
+		}
+		
+		updateUI(); // UI mit neuen Filtern triggern
+	}
 
     async function openDB() {
         return new Promise(res => {
@@ -322,7 +346,11 @@
 
     function updateUI() {
 		const query = document.getElementById('search-input').value.toLowerCase();
-		const filtered = entries.filter(e => e.name.toLowerCase().includes(query));
+		const filtered = entries.filter(e => {
+			const matchesSearch = e.name.toLowerCase().includes(query);
+			const matchesFilter = activeFilters[e.type]; // Prüft ob 'fund' oder 'spot' aktiv ist
+			return matchesSearch && matchesFilter;
+		});
 		
 		// Bestehende Marker entfernen
 		markersOnMap.forEach(m => map.removeLayer(m));
