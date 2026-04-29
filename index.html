@@ -367,13 +367,14 @@
 				day: '2-digit', month: '2-digit', year: 'numeric' 
 			});
 
-			// Popup-Inhalt mit Thumbnail zusammenbauen
+			// Popup-Inhalt mit Thumbnail und Info zusammenbauen
 			const popupContent = `
-				<div style="text-align:center; min-width: 100px;">
+				<div style="text-align:center; min-width: 120px; max-width: 200px;">
 					<img src="${e.thumb}" 
 						 onclick="showFullPhotoFromGallery('${e.photoId}')"
 						 style="width:80px; height:80px; object-fit:cover; border-radius:8px; cursor:zoom-in; border:1px solid #ddd;">
-					<div style="font-weight:bold; font-size:1rem;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
+					<div style="font-weight:bold; font-size:1rem; margin-top:5px;">${e.type === 'spot' ? '📍' : '🍄'} ${e.name}</div>
+					${e.info ? `<div style="font-size:0.85rem; color:#444; margin: 4px 0; font-style:italic;">"${e.info}"</div>` : ''}
 					<div style="font-size:0.75rem; color:#666;">${dateStr}</div>
 				</div>
 			`;
@@ -391,7 +392,24 @@
             const isSpot = g.every(e => e.type === 'spot');
             li.style.borderLeft = isSpot ? "5px solid #607D8B" : "5px solid var(--primary)";
             li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>${name}</strong><br><small>${g.length} Einträge</small></div>`;
-            li.onclick = () => openDetail(name, g);
+            li.onclick = () => {
+				const lastEntry = g[g.length - 1];
+				const isSpotGroup = g.every(e => (e.type || 'fund') === 'spot');
+
+				if (isSpotGroup) {
+					// Direkt zum Spot springen
+					map.flyTo([lastEntry.lat, lastEntry.lng], 17);
+					// Marker-Popup suchen und öffnen
+					markersOnMap.forEach(m => {
+						if (m.getLatLng().lat === lastEntry.lat && m.getLatLng().lng === lastEntry.lng) {
+							m.openPopup();
+						}
+					});
+				} else {
+					// Nur bei Funden das Detail-Modal öffnen
+					openDetail(name, g);
+				}
+			};
             listEl.appendChild(li);
         });
 		
