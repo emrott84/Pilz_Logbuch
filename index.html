@@ -247,6 +247,23 @@
 		
 		updateUI(); // UI mit neuen Filtern triggern
 	}
+	
+	async function copyAndOpenWiki(name) {
+		try {
+			// Name in die Zwischenablage kopieren
+			await navigator.clipboard.writeText(name);
+			
+			// Optional: Ein ganz kurzes visuelles Feedback (Toast/Alert)
+			// Kann man auch weglassen, wenn es den Fluss stört
+			console.log("Kopiert: " + name); 
+			
+			// Die Zielseite öffnen
+			window.open('https://www.123pilzsuche.de/', '_blank');
+		} catch (err) {
+			// Fallback, falls Clipboard-Zugriff (z.B. wegen fehlendem HTTPS) scheitert
+			window.open('https://www.123pilzsuche.de/', '_blank');
+		}
+	}
 
     async function openDB() {
         return new Promise(res => {
@@ -467,8 +484,21 @@
 	}
 
     async function openDetail(name, group) {
-		// Titel setzen
-		document.getElementById('modal-title').innerHTML = `<span>${name}</span> <a href="#" class="wiki-link" onclick="window.open('https://www.123pilzsuche.de/filter/plz/search.php?q=${encodeURIComponent(name)}')">Wiki</a>`;		
+		// --- START: HIER IST DIE ÄNDERUNG ---
+		// Wir prüfen, ob es sich um Funde handelt
+		const isMushy = group.some(e => (e.type || 'fund') === 'fund');
+		
+		// Wir bauen den Titel zusammen
+		let titleHTML = `<span>${name}</span>`;
+		if (isMushy) {
+			// Der Button bekommt den Aufruf für unsere neue Copy-Funktion
+			titleHTML += ` <a href="#" class="wiki-link" onclick="copyAndOpenWiki('${name.replace(/'/g, "\\'")}'); return false;">Wiki 📋</a>`;
+		}
+		
+		// Den Titel im Modal setzen
+		document.getElementById('modal-title').innerHTML = titleHTML;
+		// --- ENDE DER ÄNDERUNG ---
+
 		const hist = document.getElementById('detail-history');
 		const grid = document.getElementById('detail-grid');
 		
@@ -482,7 +512,7 @@
 
 		// Einträge sortieren und verarbeiten
 		group.sort((a,b) => b.ts - a.ts).forEach((e) => {
-			// Teil A: Listen-Eintrag für Tab 1
+			// Listen-Eintrag für Tab 1
 			const dateStr = new Date(e.ts).toLocaleDateString('de-DE');
 			const item = document.createElement('div');
 			item.className = 'history-item';
@@ -497,7 +527,7 @@
 			`;
 			hist.appendChild(item);
 
-			// Teil B: Bild für Tab 2 (Grid) hinzufügen
+			// Bild für Tab 2 (Grid) hinzufügen
 			if(e.photoId) {
 				const img = document.createElement('img');
 				img.className = 'grid-img';
