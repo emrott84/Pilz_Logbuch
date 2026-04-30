@@ -483,16 +483,31 @@
 		document.getElementById('tab-grid-btn').classList.toggle('active', type === 'grid');
 	}
 
+	// Neue Hilfsfunktion: Kopiert nur den Namen, öffnet kein Fenster
+	async function prepareCopy(name) {
+		try {
+			await navigator.clipboard.writeText(name);
+			console.log("Name kopiert: " + name);
+		} catch (err) {
+			console.error("Fehler beim Kopieren: ", err);
+		}
+	}
+	
     async function openDetail(name, group) {
-		// --- START: HIER IST DIE ÄNDERUNG ---
-		// Wir prüfen, ob es sich um Funde handelt
+		// 1. Prüfen: Handelt es sich um Funde? (Wegen Wiki-Link)
 		const isMushy = group.some(e => (e.type || 'fund') === 'fund');
 		
-		// Wir bauen den Titel zusammen
+		// 2. Den Titel und den speziellen Link zusammenbauen
 		let titleHTML = `<span>${name}</span>`;
 		if (isMushy) {
-			// Der Button bekommt den Aufruf für unsere neue Copy-Funktion
-			titleHTML += ` <a href="#" class="wiki-link" onclick="copyAndOpenWiki('${name.replace(/'/g, "\\'")}'); return false;">Wiki 📋</a>`;
+			// WICHTIG: href ist die echte URL. 
+			// target="_blank" öffnet den neuen Tab.
+			// onmousedown & onclick führen das Kopieren aus, bevor der Tab wechselt.
+			titleHTML += ` <a href="https://www.123pilzsuche.de/" 
+							  target="_blank" 
+							  class="wiki-link" 
+							  onmousedown="prepareCopy('${name.replace(/'/g, "\\')}')" 
+							  onclick="prepareCopy('${name.replace(/'/g, "\\')}')">Wiki 📋</a>`;
 		}
 		
 		// Den Titel im Modal setzen
