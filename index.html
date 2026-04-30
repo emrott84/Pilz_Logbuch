@@ -467,8 +467,20 @@
 	}
 
     async function openDetail(name, group) {
-		// Titel setzen
-		document.getElementById('modal-title').innerHTML = `<span>${name}</span> <a href="#" class="wiki-link" onclick="window.open('https://www.123pilzsuche.de/filter/plz/search.php?q=${encodeURIComponent(name)}')">Wiki</a>`;		
+		// 1. Prüfen: Handelt es sich um Funde?
+		const isMushy = group.some(e => (e.type || 'fund') === 'fund');
+		
+		// 2. Den Titel und den Link bauen
+		let titleHTML = `<span>${name}</span>`;
+		if (isMushy) {
+			// ECHTER Link (href + target="_blank"). 
+			// Der Browser öffnet den Tab nativ, das onclick kopiert parallel den Namen.
+			titleHTML += ` <a href="https://www.123pilzsuche.de/" target="_blank" class="wiki-link" onclick="copyForWiki('${name.replace(/'/g, "\\'")}')">Wiki 📋</a>`;
+		}
+		
+		// Titel im Modal setzen
+		document.getElementById('modal-title').innerHTML = titleHTML;		
+		
 		const hist = document.getElementById('detail-history');
 		const grid = document.getElementById('detail-grid');
 		
@@ -528,6 +540,16 @@
 			}
 		}
 	}	
+	
+	function copyForWiki(name) {
+		// Wir werfen den Text in die Zwischenablage. 
+		// Kein "await", damit der Link sofort und nativ vom Browser geöffnet wird.
+		navigator.clipboard.writeText(name).then(() => {
+			console.log("Erfolgreich kopiert: " + name);
+		}).catch(err => {
+			console.error("Fehler beim Kopieren in die Zwischenablage:", err);
+		});
+	}
 	
 	function jumpTo(lat, lng) {
 		toggleModal('detail-modal');
