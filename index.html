@@ -29,7 +29,14 @@
 			height: 100%; /* Er nutzt die volle Höhe des starren Bodys */
 			width: 100%;
 		}
-        #map { height: 50vh; min-height: 300px; width: 100%; z-index: 1; flex-shrink: 0; position: relative; }
+        #map { 
+			height: 50vh; 
+			min-height: 300px; 
+			width: 100%; 
+			z-index: 10; /* Karte liegt unten */
+			flex-shrink: 0; 
+			position: relative; 
+		}
         
         .gps-fab {
             position: absolute;
@@ -53,9 +60,11 @@
 			padding: 12px; 
 			background: var(--bg); 
 			flex: 1; 
-			overflow-y: auto; /* NUR dieser Bereich darf hoch und runter scrollen! */
-			-webkit-overflow-scrolling: touch; /* Damit es auf dem iPhone flüssig wischt */
-			padding-bottom: 10px; /* Ein fetter Puffer am Ende, damit die Knöpfe niemals überdeckt werden */
+			overflow-y: auto; 
+			-webkit-overflow-scrolling: touch; 
+			padding-bottom: 80px;
+			position: relative; /* Erzeugt einen eigenen Stapelkontext */
+			z-index: 20; /* UI-Content liegt ÜBER der Karte */
 		}
 
 		/* 4. Der Schalter (unverändert, nur sauber formatiert) */
@@ -72,7 +81,14 @@
         .icon-btn { flex: 0 0 50px; height: 50px; background: #607D8B; border-radius: 8px; border: none; color: white; font-size: 1.4rem; cursor: pointer; }
         .save-btn { flex: 1; height: 50px; background: var(--accent); color: white; font-weight: bold; border: none; border-radius: 8px; font-size: 1rem; cursor: pointer; }
 
-        .search-bar-container { position: sticky; top: 0; background: var(--bg); padding: 8px 0; z-index: 10; }
+        .search-bar-container { 
+			position: sticky; 
+			top: 0; 
+			background: var(--bg); /* Muss die gleiche Farbe wie der Hintergrund haben! */
+			padding: 8px 0; 
+			z-index: 100; 
+		}
+		
         #mushroom-list { list-style: none; padding: 0; margin: 0; }
         .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
