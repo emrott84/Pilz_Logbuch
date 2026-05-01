@@ -158,12 +158,13 @@
 		/* Das dezente rote Glühen */
 		@keyframes glow-red {
 			0% { color: #666; text-shadow: none; }
-			50% { color: #d32f2f; text-shadow: 0 0 8px rgba(211, 47, 47, 0.5); font-weight: bold; }
+			50% { color: #d32f2f; text-shadow: 0 0 5px rgba(211, 47, 47, 0.4); }
 			100% { color: #666; text-shadow: none; }
 		}
 
 		.glow-active {
-			animation: glow-red 3s infinite ease-in-out;
+			animation: glow-red 4s infinite ease-in-out;
+			font-weight: bold;
 		}
     </style>
 </head>
@@ -239,21 +240,27 @@
     <button class="lb-nav lb-next" onclick="changeLightboxImg(1)">❯</button>
 </div>
 
-<div id="disclaimer-modal" class="full-modal" style="display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.85); padding: 20px;">
-    <div class="card" style="max-width: 400px; padding: 20px; text-align: center; border-top: 5px solid var(--danger);">
+<!-- Das Disclaimer Modal -->
+<div id="disclaimer-modal" class="full-modal" style="display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.85); z-index: 5000;">
+    <div class="card" style="max-width: 400px; padding: 20px; text-align: center; border-top: 5px solid var(--danger); background: white;">
         <h2 style="color:var(--danger); margin-top: 0;">🍄 Sicherheitshinweis</h2>
-        <div style="text-align: left; font-size: 0.9rem; line-height: 1.5; color: #333;">
+        <div style="text-align: left; font-size: 0.9rem; line-height: 1.5; color: #333; margin-bottom: 20px;">
             <p>Diese App dient ausschließlich der <strong>Dokumentation</strong>. Die Inhalte und Links sind keine Bestimmungshilfe.</p>
             <p><strong>Verzehr auf eigene Gefahr:</strong> Konsumiere niemals Pilze, die du nicht zu 100% sicher bestimmt hast. Bei Unsicherheit unbedingt einen Sachverständigen hinzuziehen.</p>
-            <p style="font-size: 0.8rem; color: #666; border-top: 1px solid #eee; pt: 10px;">Der Entwickler übernimmt keine Haftung für Schäden durch Fehlbestimmung oder Verzehr.</p>
+            <p style="font-size: 0.8rem; color: #666; border-top: 1px solid #eee; padding-top: 10px;">Der Entwickler übernimmt keine Haftung für Schäden durch Fehlbestimmung oder Verzehr.</p>
         </div>
         
-        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
-            <button class="save-btn" onclick="acceptDisclaimer()" style="width: 100%; margin: 0;">Verstanden & Akzeptieren</button>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <button class="save-btn" onclick="confirmDisclaimer()" style="width: 100%; margin: 0; cursor: pointer;">Verstanden & Akzeptieren</button>
             <a href="https://www.dgfm-ev.de/" target="_blank" style="font-size: 0.75rem; color: var(--primary); text-decoration: underline;">Pilzsachverständige finden (DGfM)</a>
         </div>
     </div>
 </div>
+
+<!-- Der Footer Button (unten bei Backup/Import) -->
+<button id="footer-disclaimer-btn" 
+        style="background:none; border:none; font-size:0.7rem; margin-left:10px; cursor: pointer; color: #666;" 
+        onclick="openDisclaimerManual()">Disclaimer</button>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
@@ -565,6 +572,46 @@
 				history.back();
 			}
 		}
+	}
+
+	// Öffnet das Modal manuell über den Footer-Button
+	function openDisclaimerManual() {
+		document.getElementById('disclaimer-modal').style.display = 'flex';
+	}
+
+	// Schließt das Modal und setzt den Zeitstempel für Zwang und Glühen
+	function confirmDisclaimer() {
+		localStorage.setItem('disclaimerAcceptedDate', Date.now());
+		document.getElementById('disclaimer-modal').style.display = 'none';
+		
+		const footerBtn = document.getElementById('footer-disclaimer-btn');
+		if (footerBtn) footerBtn.classList.remove('glow-active');
+		
+		console.log("Sicherheitshinweis bestätigt.");
+	}
+
+	// Die zentrale Prüf-Logik für Start und Glühen
+	function checkDisclaimerStatus() {
+		const lastAcceptance = localStorage.getItem('disclaimerAcceptedDate');
+		const footerBtn = document.getElementById('footer-disclaimer-btn');
+		
+		if (!lastAcceptance) {
+			openDisclaimerManual(); // Erstnutzer: Sofort zeigen
+			return;
+		}
+
+		const timePassed = Date.now() - parseInt(lastAcceptance);
+		const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+		const oneEightyDays = 180 * 24 * 60 * 60 * 1000;
+
+		// Priorität 1: Harte Sperre nach 90 Tagen Inaktivität
+		if (timePassed > ninetyDays) {
+			openDisclaimerManual();
+		} 
+		// Priorität 2: Subtiles Glühen nach 180 Tagen für Dauer-User
+		else if (timePassed > oneEightyDays) {
+			if (footerBtn) footerBtn.classList.add('glow-active');
+		}
 	}	
 	
 	function jumpTo(lat, lng) {
@@ -639,38 +686,6 @@
 			lb.style.display = 'none';
 		}
 	});
-	
-	function showDisclaimer() {
-		document.getElementById('disclaimer-modal').style.display = 'flex';
-		// Sobald er ihn ansieht, nehmen wir das als "gelesen" wahr
-		// und setzen den Timer zurück, um das Glühen zu stoppen.
-		localStorage.setItem('disclaimerAcceptedDate', Date.now());
-		document.getElementById('footer-disclaimer-btn').classList.remove('glow-active');
-	}
-
-	function checkDisclaimer() {
-		const lastAcceptance = localStorage.getItem('disclaimerAcceptedDate');
-		if (!lastAcceptance) {
-			showDisclaimer();
-			return;
-		}
-
-		const timePassed = Date.now() - parseInt(lastAcceptance);
-		const ninetyDays = 90 * 24 * 60 * 60 * 1000;
-		const oneEightyDays = 180 * 24 * 60 * 60 * 1000;
-
-		// 1. Stufe: Harte Sperre nach 90 Tagen
-		if (timePassed > ninetyDays) {
-			showDisclaimer();
-		} 
-		// 2. Stufe: Glühen nach 180 Tagen (falls das Modal vorher weggeklickt wurde)
-		// Hinweis: In diesem Setup greift die 90-Tage-Sperre immer zuerst. 
-		// Wenn du möchtest, dass das Glühen VOR der Sperre kommt, 
-		// müsstest du die Zahlen tauschen (z.B. 30 Tage glühen, 90 Tage Sperre).
-		else if (timePassed > oneEightyDays) {
-			document.getElementById('footer-disclaimer-btn').classList.add('glow-active');
-		}
-	}
 </script>
 </body>
 </html>
