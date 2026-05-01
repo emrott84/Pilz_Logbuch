@@ -154,6 +154,17 @@
 		}
 		.lb-prev { left: 0; border-radius: 0 8px 8px 0; }
 		.lb-next { right: 0; border-radius: 8px 0 0 8px; }
+		
+		/* Das dezente rote Glühen */
+		@keyframes glow-red {
+			0% { color: #666; text-shadow: none; }
+			50% { color: #d32f2f; text-shadow: 0 0 8px rgba(211, 47, 47, 0.5); font-weight: bold; }
+			100% { color: #666; text-shadow: none; }
+		}
+
+		.glow-active {
+			animation: glow-red 3s infinite ease-in-out;
+		}
     </style>
 </head>
 <body>
@@ -199,7 +210,9 @@
         <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
             <button style="background:none; border:none; font-size:0.7rem;" onclick="exportData()">Backup</button>
             <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
-            <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="showDisclaimer()">Disclaimer</button>
+            <button id="footer-disclaimer-btn" 
+			style="background:none; border:none; font-size:0.7rem; margin-left:10px; transition: 0.3s;" 
+			onclick="showDisclaimer()">Disclaimer</button>
 			<input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
@@ -629,38 +642,35 @@
 	
 	function showDisclaimer() {
 		document.getElementById('disclaimer-modal').style.display = 'flex';
-	}
-
-	function acceptDisclaimer() {
-		// Wir speichern den aktuellen Zeitstempel (Millisekunden)
+		// Sobald er ihn ansieht, nehmen wir das als "gelesen" wahr
+		// und setzen den Timer zurück, um das Glühen zu stoppen.
 		localStorage.setItem('disclaimerAcceptedDate', Date.now());
-		document.getElementById('disclaimer-modal').style.display = 'none';
+		document.getElementById('footer-disclaimer-btn').classList.remove('glow-active');
 	}
 
 	function checkDisclaimer() {
 		const lastAcceptance = localStorage.getItem('disclaimerAcceptedDate');
-		const ninetyDays = 90 * 24 * 60 * 60 * 1000; // 90 Tage in Millisekunden
-
 		if (!lastAcceptance) {
-			// Noch nie akzeptiert
 			showDisclaimer();
-		} else {
-			const timePassed = Date.now() - parseInt(lastAcceptance);
-			if (timePassed > ninetyDays) {
-				// Letzte Akzeptanz ist älter als 90 Tage
-				showDisclaimer();
-			}
+			return;
+		}
+
+		const timePassed = Date.now() - parseInt(lastAcceptance);
+		const ninetyDays = 90 * 24 * 60 * 60 * 1000;
+		const oneEightyDays = 180 * 24 * 60 * 60 * 1000;
+
+		// 1. Stufe: Harte Sperre nach 90 Tagen
+		if (timePassed > ninetyDays) {
+			showDisclaimer();
+		} 
+		// 2. Stufe: Glühen nach 180 Tagen (falls das Modal vorher weggeklickt wurde)
+		// Hinweis: In diesem Setup greift die 90-Tage-Sperre immer zuerst. 
+		// Wenn du möchtest, dass das Glühen VOR der Sperre kommt, 
+		// müsstest du die Zahlen tauschen (z.B. 30 Tage glühen, 90 Tage Sperre).
+		else if (timePassed > oneEightyDays) {
+			document.getElementById('footer-disclaimer-btn').classList.add('glow-active');
 		}
 	}
-
-	// In window.onload aufrufen:
-	window.onload = async () => { 
-		await openDB(); 
-		entries = await idb.getAll('entries'); 
-		updateUI(); 
-		
-		checkDisclaimer(); // Hier die neue Prüfung triggern
-	};
 </script>
 </body>
 </html>
