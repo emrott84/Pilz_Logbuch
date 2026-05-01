@@ -283,13 +283,6 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-
-	// Später ersetzen wir das durch die vollständige Liste (3000+)
-	const PILO_INDEX = [
-		"Steinpilz", "Pfifferling", "Fliegenpilz", "Grüner Knollenblätterpilz", 
-		"Parasol", "Maronenröhrling", "Gallenröhrling", "Perlpilz", "Pantherpilz", "Krause Glucke"
-	].sort();
-
     let db, entries = [], markersOnMap = [], currentImage = null;
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
@@ -409,62 +402,13 @@
 
     function updateUI() {
 		const query = document.getElementById('search-input').value.toLowerCase();
-		const listEl = document.getElementById('mushroom-list');
-		listEl.innerHTML = '';
-
-		// 1. Deine echten Funde gruppieren
-		const groups = entries.reduce((acc, e) => {
-			if (!acc[e.name]) acc[e.name] = [];
-			acc[e.name].push(e);
-			return acc;
-		}, {});
-
-		// 2. Deine Funde filtern und anzeigen
-		const myFoundNames = Object.keys(groups).filter(name => name.toLowerCase().includes(query));
-		
-		myFoundNames.sort().forEach(name => {
-			const g = groups[name];
-			const li = document.createElement('li');
-			li.className = 'list-item';
-			li.style.borderLeft = "5px solid var(--primary)"; // Grüner Balken für Funde
-			li.innerHTML = `
-				<img src="${g[g.length-1].thumb}">
-				<div style="flex:1">
-					<strong>✅ ${name}</strong><br>
-					<small>${g.length} eigene Funde</small>
-				</div>
-			`;
-			li.onclick = () => openDetail(name, g);
-			listEl.appendChild(li);
-		});
-
-		// 3. Wenn gesucht wird: Ergänzung aus der großen Wiki-Liste
-		if (query.length > 1) {
-			const wikiMatches = PILO_INDEX.filter(name => 
-				name.toLowerCase().includes(query) && !groups[name]
-			);
-
-			wikiMatches.forEach(name => {
-				const li = document.createElement('li');
-				li.className = 'list-item';
-				li.style.opacity = "0.7";
-				li.style.borderLeft = "5px solid #ccc"; // Grauer Balken für Wiki-Vorschläge
-				li.innerHTML = `
-					<img src="icon-192.png" style="filter: grayscale(1);">
-					<div style="flex:1">
-						<strong>🔘 ${name}</strong><br>
-						<small style="color:var(--primary)">Direkt zu Wikipedia 📖</small>
-					</div>
-				`;
-				// One-Click-Wiki
-				li.onclick = () => {
-					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name)}`;
-					window.open(wikiUrl, '_blank');
-				};
-				listEl.appendChild(li);
-			});
-		}
-		
+		const filtered = entries.filter(e => {
+			const matchesSearch = e.name.toLowerCase().includes(query);
+			// Wenn e.type fehlt, behandeln wir ihn wie einen 'fund' (oder zeigen ihn immer an)
+			const entryType = e.type || 'fund'; 
+			const matchesFilter = activeFilters[entryType];
+			return matchesSearch && matchesFilter;
+		});		
 		// Bestehende Marker entfernen
 		markersOnMap.forEach(m => map.removeLayer(m));
 		
