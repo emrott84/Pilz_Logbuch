@@ -190,6 +190,25 @@
 			animation: glow-red 4s infinite ease-in-out;
 			font-weight: bold;
 		}
+		
+		/* Styling für die Filter-Buttons (🍄, 📍, 📖) */
+		.filter-toggles { 
+			display: flex; 
+			gap: 4px; 
+			background: #e0e0e0; 
+			padding: 4px; 
+			border-radius: 10px; 
+			flex-shrink: 0;
+		}
+
+		.filter-toggles button {
+			transition: all 0.2s ease;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.1rem;
+			min-width: 40px;
+		}
     </style>
 </head>
 <body>
@@ -227,6 +246,7 @@
 				<div class="filter-toggles" style="display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px;">
 					<button id="filter-fund" onclick="toggleFilter('fund')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">🍄</button>
 					<button id="filter-spot" onclick="toggleFilter('spot')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">📍</button>
+					<button id="filter-wiki" onclick="toggleFilter('wiki')" style="border:none; background:#ccc; color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer; opacity: 0.6;">📖</button>
 				</div>
 			</div>
 		</div>
@@ -286,7 +306,7 @@
     let db, entries = [], markersOnMap = [], currentImage = null;
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
-	let activeFilters = { fund: true, spot: true }; // Startzustand: Alles sichtbar
+	let activeFilters = { fund: true, spot: true, wiki: false }; // Startzustand: Alles sichtbar, wiki aus
 	
 	// Das globale Register für die Wiki-Suche (Test-Liste)
 	const PILO_INDEX = [
@@ -297,17 +317,16 @@
 	function toggleFilter(type) {
 		activeFilters[type] = !activeFilters[type];
 		
-		// Optisches Feedback der Buttons
 		const btn = document.getElementById('filter-' + type);
 		if (activeFilters[type]) {
-			btn.style.background = 'var(--primary)';
+			btn.style.background = (type === 'wiki') ? '#607D8B' : 'var(--primary)';
 			btn.style.opacity = '1';
 		} else {
 			btn.style.background = '#ccc';
 			btn.style.opacity = '0.6';
 		}
 		
-		updateUI(); // UI mit neuen Filtern triggern
+		updateUI(); 
 	}
 
     async function openDB() {
@@ -457,11 +476,13 @@
 			listEl.appendChild(li);
 		});
 
-		// 4. WIKI-ERGÄNZUNG (nur wenn ein Suchbegriff eingegeben wurde)
-		if (query.length > 1) {
-			const wikiMatches = PILO_INDEX.filter(name => 
-				name.toLowerCase().includes(query) && !groups[name]
-			);
+		// 4. WIKI-ERGÄNZUNG (Erscheint wenn gesucht wird ODER wenn der Wiki-Filter aktiv ist)
+		if (query.length > 1 || activeFilters.wiki) {
+			const wikiMatches = PILO_INDEX.filter(name => {
+				const matchesSearch = name.toLowerCase().includes(query);
+				const notAlreadyInFunde = !groups[name]; // Nur zeigen, wenn nicht schon als Fund gelistet
+				return matchesSearch && notAlreadyInFunde;
+			});
 
 			wikiMatches.forEach(name => {
 				const li = document.createElement('li');
@@ -469,13 +490,12 @@
 				li.style.opacity = "0.7";
 				li.style.borderLeft = "5px solid #ccc"; 
 				li.innerHTML = `
-					<img src="icon-192.png" style="filter: grayscale(1);">
+					<img src="icon-192.png" style="filter: grayscale(1); opacity: 0.5;">
 					<div style="flex:1">
 						<strong>🔘 ${name}</strong><br>
-						<small style="color:var(--primary)">Klick für Wikipedia-Info 📖</small>
+						<small style="color:#666">Klick für Wikipedia-Info 📖</small>
 					</div>
 				`;
-				// Der von dir gewünschte Direkt-Link (spart das Modal)
 				li.onclick = () => {
 					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name)}`;
 					window.open(wikiUrl, '_blank');
