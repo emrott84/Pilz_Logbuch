@@ -226,19 +226,19 @@
     <button class="lb-nav lb-next" onclick="changeLightboxImg(1)">❯</button>
 </div>
 
-<div id="disclaimer-modal" class="full-modal" style="display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.8);">
-    <div class="card" style="max-width: 90%; max-height: 80%; overflow-y: auto; text-align: center;">
-        <h2 style="color:var(--danger);">🍄 Achtung</h2>
-        <p style="font-size: 0.9rem; line-height: 1.4; text-align: left;">
-            Diese App dient ausschließlich der <strong>Dokumentation</strong>. Die verknüpften Informationen sind keine Bestimmungshilfe.
-        </p>
-        <p style="font-size: 0.9rem; line-height: 1.4; text-align: left; font-weight: bold;">
-            Konsumiere niemals Pilze, die du nicht zu 100% sicher als Speisepilze identifiziert hast! Wende dich im Zweifel an einen Pilzsachverständigen.
-        </p>
-        <p style="font-size: 0.8rem; color: #666;">
-            Die Nutzung erfolgt auf eigene Gefahr. Der Entwickler übernimmt keine Haftung für Fehlbestimmungen oder Verzehr.
-        </p>
-        <button class="save-btn" onclick="acceptDisclaimer()">Verstanden & Akzeptieren</button>
+<div id="disclaimer-modal" class="full-modal" style="display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.85); padding: 20px;">
+    <div class="card" style="max-width: 400px; padding: 20px; text-align: center; border-top: 5px solid var(--danger);">
+        <h2 style="color:var(--danger); margin-top: 0;">🍄 Sicherheitshinweis</h2>
+        <div style="text-align: left; font-size: 0.9rem; line-height: 1.5; color: #333;">
+            <p>Diese App dient ausschließlich der <strong>Dokumentation</strong>. Die Inhalte und Links sind keine Bestimmungshilfe.</p>
+            <p><strong>Verzehr auf eigene Gefahr:</strong> Konsumiere niemals Pilze, die du nicht zu 100% sicher bestimmt hast. Bei Unsicherheit unbedingt einen Sachverständigen hinzuziehen.</p>
+            <p style="font-size: 0.8rem; color: #666; border-top: 1px solid #eee; pt: 10px;">Der Entwickler übernimmt keine Haftung für Schäden durch Fehlbestimmung oder Verzehr.</p>
+        </div>
+        
+        <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 12px;">
+            <button class="save-btn" onclick="acceptDisclaimer()" style="width: 100%; margin: 0;">Verstanden & Akzeptieren</button>
+            <a href="https://www.dgfm-ev.de/" target="_blank" style="font-size: 0.75rem; color: var(--primary); text-decoration: underline;">Pilzsachverständige finden (DGfM)</a>
+        </div>
     </div>
 </div>
 
@@ -632,20 +632,34 @@
 	}
 
 	function acceptDisclaimer() {
-		localStorage.setItem('disclaimerAccepted', 'true');
+		// Wir speichern den aktuellen Zeitstempel (Millisekunden)
+		localStorage.setItem('disclaimerAcceptedDate', Date.now());
 		document.getElementById('disclaimer-modal').style.display = 'none';
 	}
 
-	// In deine window.onload Funktion einbauen:
+	function checkDisclaimer() {
+		const lastAcceptance = localStorage.getItem('disclaimerAcceptedDate');
+		const ninetyDays = 90 * 24 * 60 * 60 * 1000; // 90 Tage in Millisekunden
+
+		if (!lastAcceptance) {
+			// Noch nie akzeptiert
+			showDisclaimer();
+		} else {
+			const timePassed = Date.now() - parseInt(lastAcceptance);
+			if (timePassed > ninetyDays) {
+				// Letzte Akzeptanz ist älter als 90 Tage
+				showDisclaimer();
+			}
+		}
+	}
+
+	// In window.onload aufrufen:
 	window.onload = async () => { 
 		await openDB(); 
 		entries = await idb.getAll('entries'); 
 		updateUI(); 
 		
-		// Disclaimer-Check beim Start
-		if (!localStorage.getItem('disclaimerAccepted')) {
-			showDisclaimer();
-		}
+		checkDisclaimer(); // Hier die neue Prüfung triggern
 	};
 </script>
 </body>
