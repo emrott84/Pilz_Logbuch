@@ -199,7 +199,8 @@
         <div style="text-align:center; padding: 20px 0; opacity: 0.5;">
             <button style="background:none; border:none; font-size:0.7rem;" onclick="exportData()">Backup</button>
             <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="document.getElementById('import-file').click()">Import</button>
-            <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
+            <button style="background:none; border:none; font-size:0.7rem; margin-left:10px;" onclick="showDisclaimer()">Disclaimer</button>
+			<input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
 </div>
@@ -223,6 +224,22 @@
     <button class="lb-nav lb-prev" onclick="changeLightboxImg(-1)">❮</button>
     <img id="lightbox-img" src="" alt="Vollbild">
     <button class="lb-nav lb-next" onclick="changeLightboxImg(1)">❯</button>
+</div>
+
+<div id="disclaimer-modal" class="full-modal" style="display:none; justify-content:center; align-items:center; background:rgba(0,0,0,0.8);">
+    <div class="card" style="max-width: 90%; max-height: 80%; overflow-y: auto; text-align: center;">
+        <h2 style="color:var(--danger);">🍄 Achtung</h2>
+        <p style="font-size: 0.9rem; line-height: 1.4; text-align: left;">
+            Diese App dient ausschließlich der <strong>Dokumentation</strong>. Die verknüpften Informationen sind keine Bestimmungshilfe.
+        </p>
+        <p style="font-size: 0.9rem; line-height: 1.4; text-align: left; font-weight: bold;">
+            Konsumiere niemals Pilze, die du nicht zu 100% sicher als Speisepilze identifiziert hast! Wende dich im Zweifel an einen Pilzsachverständigen.
+        </p>
+        <p style="font-size: 0.8rem; color: #666;">
+            Die Nutzung erfolgt auf eigene Gefahr. Der Entwickler übernimmt keine Haftung für Fehlbestimmungen oder Verzehr.
+        </p>
+        <button class="save-btn" onclick="acceptDisclaimer()">Verstanden & Akzeptieren</button>
+    </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -609,6 +626,27 @@
 			lb.style.display = 'none';
 		}
 	});
+	
+	function showDisclaimer() {
+		document.getElementById('disclaimer-modal').style.display = 'flex';
+	}
+
+	function acceptDisclaimer() {
+		localStorage.setItem('disclaimerAccepted', 'true');
+		document.getElementById('disclaimer-modal').style.display = 'none';
+	}
+
+	// In deine window.onload Funktion einbauen:
+	window.onload = async () => { 
+		await openDB(); 
+		entries = await idb.getAll('entries'); 
+		updateUI(); 
+		
+		// Disclaimer-Check beim Start
+		if (!localStorage.getItem('disclaimerAccepted')) {
+			showDisclaimer();
+		}
+	};
 </script>
 </body>
 </html>
