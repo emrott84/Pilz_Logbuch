@@ -122,7 +122,7 @@
 		
 		#mushroom-list { list-style: none; padding: 0; margin: 0; }
         
-        /* Die Basis-Karte bleibt, aber wir nutzen Flexbox für die Ausrichtung */
+        #mushroom-list { list-style: none; padding: 0; margin: 0; }
         .list-item { 
             background: var(--white); 
             display: flex; 
@@ -133,30 +133,9 @@
             cursor: pointer; 
             box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
         }
-
-        /* NEU: Container für die Namen untereinander */
-        .name-container {
-            display: flex;
-            flex-direction: column;
-            flex: 1; /* Nimmt den restlichen Platz ein */
-        }
-
-        /* NEU: Der deutsche Name (fett) */
-        .main-name {
-            font-size: 1rem;
-            font-weight: bold;
-            color: #333;
-            line-height: 1.2;
-        }
-
-        /* NEU: Der lateinische Name (klein, grau, kursiv) */
-        .latin-name {
-            font-size: 0.8rem;
-            color: #777;
-            font-style: italic;
-            margin-top: 2px;
-        }
-
+        .name-container { display: flex; flex-direction: column; flex: 1; }
+        .main-name { font-size: 1rem; font-weight: bold; color: #333; line-height: 1.2; }
+        .latin-name { font-size: 0.8rem; color: #777; font-style: italic; margin-top: 2px; }
         .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
 		
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
@@ -396,7 +375,7 @@
 		{id: 1, de: "Steinpilz", lat: "Boletus edulis", trade: "Herrenpilz"},
 		{id: 2, de: "Pfifferling", lat: "Cantharellus cibarius", trade: "Eierschwammerl"},
 		{id: 3, de: "Grüner Knollenblätterpilz", lat: "Amanita phalloides", trade: ""}
-	];
+	].sort((a, b) => a.de.localeCompare(b.de));
 
 	function toggleFilter(type) {
 		activeFilters[type] = !activeFilters[type];
@@ -560,32 +539,35 @@
 			listEl.appendChild(li);
 		});
 
-		// 4. WIKI-ERGÄNZUNG (Erscheint wenn gesucht wird ODER wenn der Wiki-Filter aktiv ist)
+		// 4. WIKI-ERGÄNZUNG
 		if (query.length > 1 || activeFilters.wiki) {
-			const wikiMatches = PILO_INDEX.filter(name => {
-				const matchesSearch = name.toLowerCase().includes(query);
-				const notAlreadyInFunde = !groups[name]; // Nur zeigen, wenn nicht schon als Fund gelistet
-				return matchesSearch && notAlreadyInFunde;
+			const wikiMatches = PILO_INDEX.filter(m => {
+				// Wir suchen in allen drei Namensfeldern
+				const matchesDe = m.de.toLowerCase().includes(query);
+				const matchesLat = m.lat.toLowerCase().includes(query);
+				const matchesTrade = m.trade ? m.trade.toLowerCase().includes(query) : false;
+				
+				// Nur anzeigen, wenn gefunden UND noch nicht in deinen eigenen Funden (groups)
+				return (matchesDe || matchesLat || matchesTrade) && !groups[m.de];
 			});
 
-			wikiMatches.forEach(mushroom => {
+			wikiMatches.forEach(m => {
 				const li = document.createElement('li');
 				li.className = 'list-item';
-				li.style.opacity = "0.9"; // Ein klein wenig blasser als eigene Funde
+				li.style.opacity = "0.8";
 				li.style.borderLeft = "5px solid #ccc"; 
                 
-                // Logik für Handelsname: Wenn vorhanden, dann in Klammern davor
-                const tradeText = mushroom.trade ? `(${mushroom.trade}) ` : '';
+                const tradePrefix = m.trade ? `(${m.trade}) ` : '';
 
 				li.innerHTML = `
 					<img src="icon-192.png" style="filter: grayscale(1); opacity: 0.5;">
 					<div class="name-container">
-						<span class="main-name">🔘 ${tradeText}${mushroom.de}</span>
-						<span class="latin-name">${mushroom.lat}</span>
+						<span class="main-name">🔘 ${tradePrefix}${m.de}</span>
+						<span class="latin-name">${m.lat}</span>
 					</div>
 				`;
 				li.onclick = () => {
-					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(mushroom.de)}`;
+					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(m.de)}`;
 					window.open(wikiUrl, '_blank');
 				};
 				listEl.appendChild(li);
