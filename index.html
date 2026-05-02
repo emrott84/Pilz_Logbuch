@@ -120,10 +120,45 @@
 			z-index: 100; 
 		}
 		
-        #mushroom-list { list-style: none; padding: 0; margin: 0; }
-        .list-item { background: var(--white); display: flex; align-items: center; padding: 10px; margin-bottom: 8px; border-radius: 10px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
+		#mushroom-list { list-style: none; padding: 0; margin: 0; }
+        
+        /* Die Basis-Karte bleibt, aber wir nutzen Flexbox für die Ausrichtung */
+        .list-item { 
+            background: var(--white); 
+            display: flex; 
+            align-items: center; 
+            padding: 10px; 
+            margin-bottom: 8px; 
+            border-radius: 10px; 
+            cursor: pointer; 
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05); 
+        }
 
+        /* NEU: Container für die Namen untereinander */
+        .name-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1; /* Nimmt den restlichen Platz ein */
+        }
+
+        /* NEU: Der deutsche Name (fett) */
+        .main-name {
+            font-size: 1rem;
+            font-weight: bold;
+            color: #333;
+            line-height: 1.2;
+        }
+
+        /* NEU: Der lateinische Name (klein, grau, kursiv) */
+        .latin-name {
+            font-size: 0.8rem;
+            color: #777;
+            font-style: italic;
+            margin-top: 2px;
+        }
+
+        .list-item img { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; }
+		
         .full-modal { position: fixed; inset: 0; background: var(--white); z-index: 2000; display: none; flex-direction: column; }
         .modal-header { background: var(--primary); color: white; padding: 12px; display: flex; align-items: center; justify-content: space-between; }
         .tab-content { padding: 12px; overflow-y: auto; flex: 1; }
@@ -356,10 +391,12 @@
 	let activeFilters = { fund: true, spot: true, wiki: false }; // Startzustand: Alles sichtbar, wiki aus
 	
 	// Das globale Register für die Wiki-Suche (Test-Liste)
+	// Das neue Register mit Objekten (Test-Setup)
 	const PILO_INDEX = [
-		"Steinpilz", "Pfifferling", "Fliegenpilz", "Grüner Knollenblätterpilz", 
-		"Parasol", "Maronenröhrling", "Gallenröhrling", "Perlpilz", "Pantherpilz", "Krause Glucke"
-	].sort();
+		{id: 1, de: "Steinpilz", lat: "Boletus edulis", trade: "Herrenpilz"},
+		{id: 2, de: "Pfifferling", lat: "Cantharellus cibarius", trade: "Eierschwammerl"},
+		{id: 3, de: "Grüner Knollenblätterpilz", lat: "Amanita phalloides", trade: ""}
+	];
 
 	function toggleFilter(type) {
 		activeFilters[type] = !activeFilters[type];
@@ -531,20 +568,24 @@
 				return matchesSearch && notAlreadyInFunde;
 			});
 
-			wikiMatches.forEach(name => {
+			wikiMatches.forEach(mushroom => {
 				const li = document.createElement('li');
 				li.className = 'list-item';
-				li.style.opacity = "0.7";
+				li.style.opacity = "0.9"; // Ein klein wenig blasser als eigene Funde
 				li.style.borderLeft = "5px solid #ccc"; 
+                
+                // Logik für Handelsname: Wenn vorhanden, dann in Klammern davor
+                const tradeText = mushroom.trade ? `(${mushroom.trade}) ` : '';
+
 				li.innerHTML = `
 					<img src="icon-192.png" style="filter: grayscale(1); opacity: 0.5;">
-					<div style="flex:1">
-						<strong>🔘 ${name}</strong><br>
-						<small style="color:#666">Klick für Wikipedia-Info 📖</small>
+					<div class="name-container">
+						<span class="main-name">🔘 ${tradeText}${mushroom.de}</span>
+						<span class="latin-name">${mushroom.lat}</span>
 					</div>
 				`;
 				li.onclick = () => {
-					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(name)}`;
+					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(mushroom.de)}`;
 					window.open(wikiUrl, '_blank');
 				};
 				listEl.appendChild(li);
