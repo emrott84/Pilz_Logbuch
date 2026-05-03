@@ -635,31 +635,21 @@
 		});
 
 		matches.slice(0, 50).forEach(m => {
-			const li = document.createElement('li');
-			li.className = 'list-item';
-			
-			// Wir bauen einen kleinen Container für das Vorschaubild
-			li.innerHTML = `
-				<div id="wiki-img-${m.id}" style="width:50px; height:50px; background:#eee; border-radius:8px; margin-right:12px; overflow:hidden; flex-shrink:0;">
-					<div style="font-size:10px; text-align:center; padding-top:15px;">⌛</div>
-				</div>
-				<div class="name-container">
-					<span class="main-name">📖 ${m.de}</span>
-					<span class="latin-name">${m.lat}</span>
-				</div>
-			`;
-
-			// Das Bild wird asynchron geladen, damit die Liste nicht hakt
+			// In der updateWikiList Funktion innerhalb der matches.slice... Schleife:
 			const fileName = m.lat.replace(/ /g, "_") + ".jpg";
-			const remoteUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=200`;
+			// Wir nutzen eine etwas stabilere Wikimedia-Thumbnail-URL
+			const remoteUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=400`;
 			
 			getWikiImage(m.id, remoteUrl).then(src => {
 				const imgDiv = document.getElementById(`wiki-img-${m.id}`);
-				if(imgDiv) imgDiv.innerHTML = `<img src="${src}" style="width:100%; height:100%; object-fit:cover;">`;
+				if (imgDiv) {
+					imgDiv.innerHTML = `<img src="${src}" style="width:100%; height:100%; object-fit:cover;" 
+											 onerror="this.parentElement.innerHTML='❌'">`;
+				}
+			}).catch(err => {
+				const imgDiv = document.getElementById(`wiki-img-${m.id}`);
+				if (imgDiv) imgDiv.innerHTML = '❌';
 			});
-
-			li.onclick = () => window.open(`https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(m.de)}`, '_blank');
-			listEl.appendChild(li);
 		});
 	}
 	
@@ -687,54 +677,48 @@
 	async function getWikiImage(piloId, remoteUrl) {
 		const mode = localStorage.getItem('wiki_image_mode');
 		
-		// 1. Im Offline-Modus: Erst in der DB suchen
+		// 1. Wenn Offline-Modus: Schau erst in die Datenbank
 		if (mode === 'offline') {
-			const cached = await idb.get('wiki_photos', piloId);
-			if (cached) return cached.data; // Gibt den Base64 String zurück
-
-			// Falls nicht in DB: Herunterladen und konvertieren
 			try {
+				const cached = await idb.get('wiki_photos', piloId);
+				if (cached) return cached.data; 
+
+				// Nicht im Cache? Dann laden und speichern
+				console.log(`Lade Bild für ID ${piloId} neu...`);
 				const base64 = await convertUrlToBase64(remoteUrl);
 				await idb.put('wiki_photos', { id: piloId, data: base64 });
 				return base64;
 			} catch (e) {
-				console.error("Download fehlgeschlagen", e);
-				return remoteUrl; // Fallback auf URL
+				console.warn("Offline-Speicherung fehlgeschlagen, nutze Remote-URL:", e);
+				return remoteUrl; 
 			}
 		}
-		
-		// 2. Im Hybrid-Modus: Einfach die URL nutzen
+		// 2. Hybrid-Modus oder Fallback
 		return remoteUrl;
 	}
 	
 	async function convertUrlToBase64(url) {
-		return new Promise(async (resolve, reject) => {
-			try {
-				const response = await fetch(url);
-				const blob = await response.blob();
-				const img = new Image();
-				img.src = URL.createObjectURL(blob);
-				
-				img.onload = () => {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			// Das ist entscheidend für Wikimedia-Bilder!
+			img.crossOrigin = "Anonymous"; 
+			
+			img.onload = () => {
+				try {
 					const canvas = document.createElement('canvas');
 					const ctx = canvas.getContext('2d');
-					
-					// Wir begrenzen die Größe auf 400px Breite für das Lexikon
-					// Das spart massiv Speicherplatz in der IndexedDB!
 					const scale = 400 / img.width;
 					canvas.width = 400;
 					canvas.height = img.height * scale;
-					
 					ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-					
-					// Wir speichern als JPEG mit 70% Qualität (perfekter Mix aus Optik/Platz)
-					const base64 = canvas.toDataURL('image/jpeg', 0.7);
-					resolve(base64);
-				};
-				img.onerror = reject;
-			} catch (e) {
-				reject(e);
-			}
+					resolve(canvas.toDataURL('image/jpeg', 0.7));
+				} catch (e) {
+					reject("Canvas-Fehler: " + e.message);
+				}
+			};
+
+			img.onerror = () => reject("Bild konnte nicht geladen werden (URL falsch oder CORS)");
+			img.src = url;
 		});
 	}
 
