@@ -424,6 +424,10 @@
                 const d = e.target.result;
                 d.createObjectStore('entries', {keyPath:'id'});
                 d.createObjectStore('photos', {keyPath:'id'});
+				// In der openDB Funktion innerhalb von req.onupgradeneeded:
+				if (!d.objectStoreNames.contains('wiki_photos')) {
+					d.createObjectStore('wiki_photos', {keyPath: 'id'}); // id entspricht der PILO_INDEX id
+				}
             };
         });
     }
@@ -664,6 +668,29 @@
 			history.pushState({ lightboxOpen: true }, "");
 		}
 	}
+	
+	async function getWikiImage(piloId, remoteUrl) {
+		const mode = localStorage.getItem('wiki_image_mode');
+		
+		// 1. Im Offline-Modus: Erst in der DB suchen
+		if (mode === 'offline') {
+			const cached = await idb.get('wiki_photos', piloId);
+			if (cached) return cached.data; // Gibt den Base64 String zurück
+
+			// Falls nicht in DB: Herunterladen und konvertieren
+			try {
+				const base64 = await convertUrlToBase64(remoteUrl);
+				await idb.put('wiki_photos', { id: piloId, data: base64 });
+				return base64;
+			} catch (e) {
+				console.error("Download fehlgeschlagen", e);
+				return remoteUrl; // Fallback auf URL
+			}
+		}
+		
+		// 2. Im Hybrid-Modus: Einfach die URL nutzen
+		return remoteUrl;
+	}
 
 	// Der "aufgeweichte" Listener
 	document.addEventListener('click', (ev) => {
@@ -799,7 +826,15 @@
 		else if (timePassed > oneEightyDays) {
 			if (footerBtn) footerBtn.classList.add('glow-active');
 		}
-	}	
+	}
+
+	function checkWikiSettings() {
+		const mode = localStorage.getItem('wiki_image_mode');
+		if (!mode) {
+			const choice = confirm("Möchtest du Lexikon-Bilder offline speichern?\n\nOK = Ja (Base64 in DB, hoher Speicherplatz)\nAbbrechen = Nein (Hybrid-Modus, Internet erforderlich)");
+			localStorage.setItem('wiki_image_mode', choice ? 'offline' : 'hybrid');
+		}
+	}
 	
 	function jumpTo(lat, lng) {
 		toggleModal('detail-modal');
@@ -813,8 +848,20 @@
 		});
 	}    
 	
-	async function exportData() { const e = await idb.getAll('entries'), p = await idb.getAll('photos'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify({entries:e, photos:p})])); a.download = `backup.json`; a.click(); }
-    async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
+	async function exportData() {
+		const e = await idb.getAll('entries');
+		const p = await idb.getAll('photos'); // Nur DEINE Fotos
+		
+		// wiki_photos wird hier ignoriert!
+		const data = JSON.stringify({ entries: e, photos: p });
+		
+		const a = document.createElement('a');
+		a.href = URL.createObjectURL(new Blob([data], {type: 'application/json'}));
+		a.download = `pilz_logbuch_backup_${new Date().toISOString().slice(0,10)}.json`;
+		a.click();
+	}    
+	
+	async function importData(i) { const r = new FileReader(); r.onload = async e => { const d = JSON.parse(e.target.result); for(let x of d.entries) await idb.put('entries', x); location.reload(); }; r.readAsText(i.files[0]); }
 
     window.onload = async () => { await openDB();
 		entries = await idb.getAll('entries');
