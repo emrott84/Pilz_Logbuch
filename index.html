@@ -319,6 +319,9 @@
             <button id="footer-disclaimer-btn" 
 			style="background:none; border:none; font-size:0.7rem; margin-left:10px; transition: 0.3s; cursor: pointer; color: #666;" 
 			onclick="openDisclaimerManual()">Disclaimer</button>
+			<button onclick="openWiki()" style="background:none; border:1px solid var(--accent-color); color:var(--accent-color); padding:5px 10px; border-radius:8px;">
+				📖 WIKIPEDIA
+			</button>
 			<input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(this)">
         </div>
     </div>
@@ -359,6 +362,22 @@
             <button class="save-btn" onclick="confirmDisclaimer()" style="width: 100%; margin: 0; cursor: pointer;">Verstanden & Akzeptieren</button>
             <a href="https://www.dgfm-ev.de/" target="_blank" style="font-size: 0.75rem; color: var(--primary); text-decoration: underline;">Pilzsachverständige finden (DGfM)</a>
         </div>
+    </div>
+</div>
+
+<!-- Wiki-Modal -->
+<div id="wiki-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-color); z-index:2000; overflow-y:auto;">
+    <div style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">Pilz-Lexikon</h2>
+            <button onclick="closeWiki()" style="background:var(--accent-color); color:white; border:none; padding:10px 15px; border-radius:10px; font-weight:bold;">Schließen</button>
+        </div>
+        
+        <input type="text" id="wiki-search" placeholder="Lexikon durchsuchen (Name, Latein...)" 
+               style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; margin-bottom:20px; font-size:1rem;"
+               oninput="updateWikiList(this.value)">
+               
+        <ul id="wiki-list" style="list-style:none; padding:0;"></ul>
     </div>
 </div>
 
@@ -1718,64 +1737,86 @@
 		});
 
 		// 3. LISTE: Deine echten Funde (Gruppiert nach Namen)
-		const groups = filteredEntries.reduce((acc, e) => { 
-			if(!acc[e.name]) acc[e.name]=[]; 
-			acc[e.name].push(e); 
-			return acc; 
-		}, {});
-
 		Object.keys(groups).sort().forEach(name => {
 			const g = groups[name];
 			const li = document.createElement('li');
 			li.className = 'list-item';
+			
 			const isSpotGroup = g.every(e => (e.type || 'fund') === 'spot');
 			li.style.borderLeft = isSpotGroup ? "5px solid #607D8B" : "5px solid var(--primary)";
-			li.innerHTML = `<img src="${g[g.length-1].thumb}"><div><strong>✅ ${name}</strong><br><small>${g.length} eigene Funde</small></div>`;
+			
+			// PRÄZISER PATCH: Das Layout der Liste wird hier neu definiert
+			li.innerHTML = `
+				<img src="${g[g.length-1].thumb}" style="cursor:pointer;" onclick="event.stopPropagation(); showDetail('${name}', ${JSON.stringify(g).replace(/"/g, '&quot;')})">
+				<div class="name-container">
+					<span class="main-name">✅ ${name}</span>
+					<div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+						<small style="color: #666;">${g.length} eigene Funde</small>
+						<span style="color: var(--accent-color); font-size: 0.8rem; cursor: pointer; text-decoration: underline;" 
+						      onclick="event.stopPropagation(); openWiki('${name}')">
+							🔍 Lexikon
+						</span>
+					</div>
+				</div>
+			`;
+
 			li.onclick = () => {
 				if (isSpotGroup) {
 					map.flyTo([g[0].lat, g[0].lng], 17);
-					markersOnMap.forEach(m => { if(m.getLatLng().lat === g[0].lat) m.openPopup(); });
+					markersOnMap.forEach(m => { 
+						if(m.getLatLng().lat === g[0].lat && m.getLatLng().lng === g[0].lng) m.openPopup(); 
+					});
 				} else {
-					openDetail(name, g);
+					// Falls deine Detail-Ansicht-Funktion anders heißt, hier anpassen (z.B. openDetail)
+					if (typeof openDetail === 'function') openDetail(name, g);
 				}
 			};
 			listEl.appendChild(li);
 		});
-
-		// 4. WIKI-ERGÄNZUNG
-		if (query.length > 1 || activeFilters.wiki) {
-			const wikiMatches = PILO_INDEX.filter(m => {
-				// Wir suchen in allen drei Namensfeldern
-				const matchesDe = m.de.toLowerCase().includes(query);
-				const matchesLat = m.lat.toLowerCase().includes(query);
-				const matchesTrade = m.trade ? m.trade.toLowerCase().includes(query) : false;
-				
-				// Nur anzeigen, wenn gefunden UND noch nicht in deinen eigenen Funden (groups)
-				return (matchesDe || matchesLat || matchesTrade) && !groups[m.de];
-			});
-
-			wikiMatches.forEach(m => {
-				const li = document.createElement('li');
-				li.className = 'list-item';
-				li.style.opacity = "0.8";
-				li.style.borderLeft = "5px solid #ccc"; 
-                
-                const tradePrefix = m.trade ? `(${m.trade}) ` : '';
-
-				li.innerHTML = `
-					<img src="icon-192.png" style="filter: grayscale(1); opacity: 0.5;">
-					<div class="name-container">
-						<span class="main-name">🔘 ${tradePrefix}${m.de}</span>
-						<span class="latin-name">${m.lat}</span>
-					</div>
-				`;
-				li.onclick = () => {
-					const wikiUrl = `https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(m.de)}`;
-					window.open(wikiUrl, '_blank');
-				};
-				listEl.appendChild(li);
-			});
+	}
+	
+	// --- WIKI MODAL LOGIK ---
+	function openWiki(searchTerm = "") {
+		document.getElementById('wiki-modal').style.display = 'block';
+		const searchInput = document.getElementById('wiki-search');
+		if (searchTerm) {
+			searchInput.value = searchTerm;
+			updateWikiList(searchTerm);
+		} else {
+			searchInput.value = "";
+			document.getElementById('wiki-list').innerHTML = "";
 		}
+	}
+
+	function closeWiki() {
+		document.getElementById('wiki-modal').style.display = 'none';
+	}
+
+	function updateWikiList(query) {
+		const listEl = document.getElementById('wiki-list');
+		listEl.innerHTML = "";
+		const q = query.toLowerCase().trim();
+		if (q.length < 2) return;
+
+		const matches = PILO_INDEX.filter(m => 
+			m.de.toLowerCase().includes(q) || 
+			m.lat.toLowerCase().includes(q) || 
+			(m.trade && m.trade.toLowerCase().includes(q))
+		);
+
+		matches.forEach(m => {
+			const li = document.createElement('li');
+			li.className = 'list-item';
+			const tradePrefix = m.trade ? `(${m.trade}) ` : '';
+			li.innerHTML = `
+				<div class="name-container">
+					<span class="main-name">📖 ${tradePrefix}${m.de}</span>
+					<span class="latin-name">${m.lat}</span>
+				</div>
+			`;
+			li.onclick = () => window.open(`https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(m.de)}`, '_blank');
+			listEl.appendChild(li);
+		});
 	}
 	
 	async function showFullPhotoFromGallery(photoId) {
