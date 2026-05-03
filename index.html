@@ -367,18 +367,14 @@
 
 <!-- Wiki-Modal -->
 <div id="wiki-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg); z-index:2000; overflow-y:auto;">
-    <div style="padding:20px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2 style="margin:0;">Pilz-Lexikon</h2>
-            <button onclick="closeWiki()" style="background:var(--accent); color:white; border:none; padding:10px 15px; border-radius:10px; font-weight:bold;">Schließen</button>
-        </div>
-        
-        <input type="text" id="wiki-search" placeholder="Lexikon durchsuchen (Name, Latein...)" 
-               style="width:100%; padding:15px; border-radius:12px; border:1px solid #ddd; margin-bottom:20px; font-size:1rem; box-sizing:border-box;"
-               oninput="updateWikiList(this.value)">
-               
-        <ul id="wiki-list" style="list-style:none; padding:0;"></ul>
-    </div>
+    <!-- Ersetze dein altes wiki-search Input durch das hier: -->
+		<div style="position: relative; margin-bottom: 20px;">
+			<input type="text" id="wiki-search" placeholder="Lexikon durchsuchen..." 
+				   style="width:100%; padding:15px; padding-right:45px; border-radius:12px; border:1px solid #ddd; font-size:1rem; box-sizing:border-box;"
+				   oninput="updateWikiList(this.value)">
+			<span id="clear-wiki-search" onclick="clearWikiSearch()" 
+				  style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-size: 1.5rem; color: #999; cursor: pointer; display: none;">✕</span>
+		</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -573,23 +569,32 @@
 	// --- WIKI MODAL LOGIK ---
 	function openWiki(searchTerm = "") {
 		document.getElementById('wiki-modal').style.display = 'block';
-		const searchInput = document.getElementById('wiki-search');
 		
+		// NEU: Zustand in die Historie pushen
+		if (!history.state || history.state.modal !== 'wiki') {
+			history.pushState({ modal: 'wiki' }, "");
+		}
+
+		const searchInput = document.getElementById('wiki-search');
 		if (searchTerm) {
 			searchInput.value = searchTerm;
 			updateWikiList(searchTerm);
 		} else {
 			searchInput.value = "";
-			// NEU: Zeige alle Einträge an, wenn kein Suchbegriff da ist
 			updateWikiList(""); 
 		}
 	}
 
 	function closeWiki() {
 		document.getElementById('wiki-modal').style.display = 'none';
+		// Falls wir durch den Button schließen, gehen wir in der Historie eins zurück
+		if (history.state && history.state.modal === 'wiki') {
+			history.back();
+		}
 	}
 
 	function updateWikiList(query) {
+		document.getElementById('clear-wiki-search').style.display = query.length > 0 ? 'block' : 'none';
 		const listEl = document.getElementById('wiki-list');
 		listEl.innerHTML = "";
 		const q = query.toLowerCase().trim();
@@ -857,6 +862,10 @@
 		if (lb && lb.style.display === 'flex') {
 			lb.style.display = 'none';
 		}
+		
+		// 3. NEU: Wiki-Modal schließen
+		const wikiModal = document.getElementById('wiki-modal');
+		if (wikiModal) wikiModal.style.display = 'none';
 	});
 </script>
 </body>
