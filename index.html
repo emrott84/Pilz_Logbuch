@@ -574,12 +574,14 @@
 	function openWiki(searchTerm = "") {
 		document.getElementById('wiki-modal').style.display = 'block';
 		const searchInput = document.getElementById('wiki-search');
+		
 		if (searchTerm) {
 			searchInput.value = searchTerm;
 			updateWikiList(searchTerm);
 		} else {
 			searchInput.value = "";
-			document.getElementById('wiki-list').innerHTML = "";
+			// NEU: Zeige alle Einträge an, wenn kein Suchbegriff da ist
+			updateWikiList(""); 
 		}
 	}
 
@@ -591,21 +593,22 @@
 		const listEl = document.getElementById('wiki-list');
 		listEl.innerHTML = "";
 		const q = query.toLowerCase().trim();
-		if (q.length < 2) return;
 
-		const matches = PILO_INDEX.filter(m => 
-			m.de.toLowerCase().includes(q) || 
-			m.lat.toLowerCase().includes(q) || 
-			(m.trade && m.trade.toLowerCase().includes(q))
-		);
+		// Wir filtern nur, wenn q nicht leer ist. Wenn q leer ist, zeigen wir alles.
+		const matches = PILO_INDEX.filter(m => {
+			if (q === "") return true; // Zeige alle, wenn Suchfeld leer
+			return m.de.toLowerCase().includes(q) || 
+				   m.lat.toLowerCase().includes(q);
+		});
 
-		matches.forEach(m => {
+		// Performance-Bremse: Nur die ersten 50 Treffer anzeigen, 
+		// damit das Handy beim Tippen nicht einfriert
+		matches.slice(0, 50).forEach(m => {
 			const li = document.createElement('li');
 			li.className = 'list-item';
-			const tradePrefix = m.trade ? `(${m.trade}) ` : '';
 			li.innerHTML = `
 				<div class="name-container">
-					<span class="main-name">📖 ${tradePrefix}${m.de}</span>
+					<span class="main-name">📖 ${m.de}</span>
 					<span class="latin-name">${m.lat}</span>
 				</div>
 			`;
