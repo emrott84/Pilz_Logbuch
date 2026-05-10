@@ -392,6 +392,8 @@
 	let currentPhotoGallery = []; // Speichert die IDs der Bilder des gewählten Pilzes
 	let currentPhotoIndex = 0;    // Speichert, an welcher Stelle der Galerie wir gerade sind
 	let activeFilters = { fund: true, spot: true, wiki: false }; // Startzustand: Alles sichtbar, wiki aus
+	let wikiLimit = 50; // Wieviele Einträge pro "Rutsch"
+	let wikiCurrentCount = 50; // Wieviele gerade angezeigt werden
 	
 	// Das globale Register für die Wiki-Suche (Test-Liste)
 	// Das neue Register mit Objekten (Test-Setup)
@@ -1815,27 +1817,33 @@
 		input.focus();
 	}
 
-	function updateWikiList(query) {
+	function updateWikiList(query, append = false) {
 		const listEl = document.getElementById('wiki-list');
 		const clearBtn = document.getElementById('clear-wiki-search');
-		
-		if (!listEl) return; 
-		if (clearBtn) clearBtn.style.display = (query && query.length > 0) ? 'block' : 'none';
+		if (!listEl) return;
 
-		listEl.innerHTML = "";
 		const q = (query || "").toLowerCase().trim();
+		if (!append) {
+			listEl.innerHTML = "";
+			wikiCurrentCount = wikiLimit; // Reset bei neuer Suche
+			if (clearBtn) clearBtn.style.display = q.length > 0 ? 'block' : 'none';
+		}
 
-		// Filtern aus dem PILO_INDEX
+		// 1. Filtern
 		const matches = PILO_INDEX.filter(m => {
-			if (q === "") return true; 
+			if (q === "") return true;
 			return m.de.toLowerCase().includes(q) || (m.lat && m.lat.toLowerCase().includes(q));
 		});
 
-		matches.slice(0, 50).forEach(m => {
+		// 2. Den relevanten Ausschnitt wählen (z.B. 0-50, dann 50-100)
+		const start = append ? wikiCurrentCount : 0;
+		const end = start + wikiLimit;
+		const slice = matches.slice(start, end);
+
+		// 3. Einträge rendern
+		slice.forEach(m => {
 			const li = document.createElement('li');
 			li.className = 'list-item';
-			
-			// Eindeutige ID für das Bild-Container-Element
 			const imgId = `wiki-img-${m.id}`;
 			
 			li.innerHTML = `
@@ -1848,25 +1856,24 @@
 				</div>
 			`;
 
-			// Bild-Lade-Logik entkoppelt starten
-			if (m.lat) {
-				const fileName = m.lat.replace(/ /g, "_") + ".jpg";
-				const remoteUrl = `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=200`;
+			if (m.lat || m.img) {
+				const fileName = m.lat ? m.lat.replace(/ /g, "_") + ".jpg" : "";
+				const remoteUrl = m.img ? m.img : `https://commons.wikimedia.org/wiki/Special:FilePath/${fileName}?width=200`;
 				
-				getWikiImage(m.id, remoteUrl)
-					.then(src => {
-						const imgDiv = document.getElementById(imgId);
-						if (imgDiv) imgDiv.innerHTML = `<img src="${src}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'">`;
-					})
-					.catch(() => {
-						const imgDiv = document.getElementById(imgId);
-						if (imgDiv) imgDiv.innerHTML = '❌';
-					});
+				getWikiImage(m.id, remoteUrl).then(src => {
+					const imgDiv = document.getElementById(imgId);
+					if (imgDiv) imgDiv.innerHTML = `<img src="${src}" style="width:100%; height:100%; object-fit:cover;" onerror="this.style.display='none'">`;
+				}).catch(() => {
+					const imgDiv = document.getElementById(imgId);
+					if (imgDiv) imgDiv.innerHTML = '🍄';
+				});
 			}
 
 			li.onclick = () => window.open(`https://de.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(m.de)}`, '_blank');
 			listEl.appendChild(li);
 		});
+
+		if (append) wikiCurrentCount += wikiLimit;
 	}
 	
 	async function showFullPhotoFromGallery(photoId) {
@@ -2182,6 +2189,18 @@
 		// 3. NEU: Wiki-Modal schließen
 		const wikiModal = document.getElementById('wiki-modal');
 		if (wikiModal) wikiModal.style.display = 'none';
+	});
+	
+	// Überwacht das Scrollen im Wiki-Modal
+	document.getElementById('wiki-modal').addEventListener('scroll', function(e) {
+		const { scrollTop, scrollHeight, clientHeight } = e.target;
+		
+		// Wenn wir weniger als 100px vom Boden entfernt sind...
+		if (scrollTop + clientHeight >= scrollHeight - 100) {
+			const currentQuery = document.getElementById('wiki-search').value;
+			// ...lade die nächsten Einträge nach
+			updateWikiList(currentQuery, true);
+		}
 	});
 </script>
 </body>
