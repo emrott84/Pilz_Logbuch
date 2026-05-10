@@ -68,40 +68,53 @@
 			z-index: 20; /* UI-Content liegt ÜBER der Karte */
 		}
 
-		/* 4. Der Schalter (unverändert, nur sauber formatiert) */
-				/* Der Container des Umschalters */
+		/* Der Container des Umschalters */
 		.type-switch { 
 			display: flex; 
-			background: var(--bg); /* Hier die App-Hintergrundfarbe */
-			border-radius: 0; 
-			margin-bottom: 0; 
-			padding: 0; 
-			gap: 4px; 
+			background: #e0e0e0; /* Etwas dunklerer Hintergrund für den Rahmen */
+			border-radius: 12px; 
+			margin: 10px; 
+			padding: 4px; 
+			gap: 6px; 
+			height: 80px; /* Hier die deutlich größere Höhe */
 		}
 
-		/* Der inaktive Zustand */
+		/* Die Labels (die eigentlichen Buttons) */
 		.type-switch label { 
 			flex: 1; 
-			text-align: center; 
 			cursor: pointer; 
-			border-radius: 0; 
-			font-size: 0.9rem; 
-			padding: 0; 
-			transition: 0.2s; 
-			color: #666; /* Etwas blassere Icons für inaktive Wahl */
+			position: relative;
+		}
+
+		/* Der Text/Icon-Container innerhalb des Labels */
+		.type-switch label span {
+			display: flex;
+			flex-direction: column; /* Icon oben, Text unten */
+			align-items: center;
+			justify-content: center;
+			height: 100%;
+			border-radius: 10px;
+			transition: all 0.2s;
+			color: #555;
+			font-size: 0.85rem;
+			gap: 4px;
+		}
+
+		/* Große Icons */
+		.type-switch label span i, 
+		.type-switch label span b {
+			font-size: 1.5rem; /* Größere Emojis/Icons */
+			font-style: normal;
 		}
 
 		/* Der aktive Zustand (wenn ausgewählt) */
 		.type-switch input:checked + span { 
 			background: var(--primary); 
 			color: white; 
-			display: block; 
-			border-radius: 0; 
-			margin: -4px; /* Gleicht das Padding des Containers aus */
-			padding: 0; 
-			font-weight: bold; 
+			font-weight: bold;
+			box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 		}
-		
+
 		.type-switch input { display: none; }
 
         .card { background: var(--white); padding: 12px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
@@ -281,9 +294,29 @@
 
     <div id="ui-content">
         <div class="type-switch">
-            <label><input type="radio" name="entry-type" value="fund" checked><span>🍄 Fund</span></label>
-            <label><input type="radio" name="entry-type" value="spot"><span>📍 Spot</span></label>
-        </div>
+			<label>
+				<input type="radio" name="type" value="fund" checked onchange="currentType='fund'">
+				<span>
+					<b>🍄</b>
+					Fund
+				</span>
+			</label>
+			
+			<label>
+				<input type="radio" name="type" value="spot" onchange="currentType='spot'">
+				<span>
+					<b>📍</b>
+					Spot
+				</span>
+			</label>
+			
+			<label onclick="openWiki()">
+				<span style="background: #d0d0d0; border-radius: 10px;">
+					<b>📖</b>
+					Lexikon
+				</span>
+			</label>
+		</div>
 
         <div class="card">
             <input type="text" id="input-name" placeholder="Name (z.B. Steinpilz)">
