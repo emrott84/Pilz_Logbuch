@@ -76,7 +76,7 @@
 			margin: 10px; 
 			padding: 4px; 
 			gap: 6px; 
-			height: 80px; /* Hier die deutlich größere Höhe */
+			height: 45px; /* Hier die deutlich größere Höhe */
 		}
 
 		/* Die Labels (die eigentlichen Buttons) */
@@ -309,13 +309,6 @@
 					Spot
 				</span>
 			</label>
-			
-			<label onclick="openWiki()">
-				<span style="background: #d0d0d0; border-radius: 10px;">
-					<b>📖</b>
-					Lexikon
-				</span>
-			</label>
 		</div>
 
         <div class="card">
@@ -340,7 +333,6 @@
 				<div class="filter-toggles" style="display: flex; gap: 4px; background: #eee; padding: 4px; border-radius: 8px;">
 					<button id="filter-fund" onclick="toggleFilter('fund')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">🍄</button>
 					<button id="filter-spot" onclick="toggleFilter('spot')" style="border:none; background:var(--primary); color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer;">📍</button>
-					<button id="filter-wiki" onclick="toggleFilter('wiki')" style="border:none; background:#ccc; color:white; border-radius: 6px; padding: 6px 8px; cursor:pointer; opacity: 0.6;">📖</button>
 				</div>
 			</div>
 		</div>
