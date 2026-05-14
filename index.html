@@ -1693,48 +1693,64 @@
     }
 
     async function saveEntry() {
-        const name = document.getElementById('input-name').value;
-        const loc = document.getElementById('input-location').value;
-        const info = document.getElementById('input-info').value;
-        const isSpot = document.querySelector('input[name="entry-type"]:checked').value === 'spot';
-        const btn = document.getElementById('main-save-btn');
+		const name = document.getElementById('input-name').value.trim();
+		const loc = document.getElementById('input-location').value.trim();
+		const info = document.getElementById('input-info').value;
+		const isSpot = document.querySelector('input[name="entry-type"]:checked')?.value === 'spot';
+		const btn = document.getElementById('main-save-btn');
 
-        if(!name) { alert("Bitte Name eingeben"); return; }
-        btn.disabled = true; btn.innerText = "⌛ GPS...";
+		if (!name) {
+			alert("Bitte Name eingeben");
+			return;
+		}
 
-        navigator.geolocation.getCurrentPosition(async (pos) => {
-            const photoId = currentImage ? Date.now().toString() + '_p' : null;
-            let thumb = 'icon-192.png';
-            if (currentImage) {
-                await idb.put('photos', { id: photoId, full: currentImage });
-                thumb = await createThumb(currentImage);
-            }
+		btn.disabled = true;
+		btn.innerText = "⌛ Speichere...";
 
-            const newEntry = {
-                id: Date.now().toString(),
-                name: name,
-                location: loc || 'Waldpunkt',
-                info: info,
-                lat: pos.coords.latitude,
-                lng: pos.coords.longitude,
-                ts: Date.now(),
-                photoId: photoId,
-                thumb: thumb,
-                type: isSpot ? 'spot' : 'fund'
-            };
+		try {
+			const pos = await new Promise((resolve, reject) => {
+				navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true });
+			});
 
-            await idb.put('entries', newEntry);
-            document.getElementById('input-name').value = '';
-            document.getElementById('input-location').value = '';
-            document.getElementById('input-info').value = '';
-            currentImage = null;
-            document.getElementById('preview-container').style.display = 'none';
-            btn.disabled = false; btn.innerText = "📍 Speichern";
-            
-            entries = await idb.getAll('entries');
-            updateUI();
-        }, () => { btn.disabled = false; btn.innerText = "📍 Speichern"; alert("GPS Fehler"); }, { enableHighAccuracy: true });
-    }
+			const photoId = currentImage ? Date.now().toString() + '_p' : null;
+			let thumb = 'icon-192.png';
+
+			if (currentImage) {
+				await idb.put('photos', { id: photoId, full: currentImage });
+				thumb = await createThumb(currentImage);
+			}
+
+			const newEntry = {
+				id: Date.now().toString(),
+				name,
+				location: loc || 'Waldpunkt',
+				info,
+				lat: pos.coords.latitude,
+				lng: pos.coords.longitude,
+				ts: Date.now(),
+				photoId,
+				thumb,
+				type: isSpot ? 'spot' : 'fund'
+			};
+
+			await idb.put('entries', newEntry);
+
+			document.getElementById('input-name').value = '';
+			document.getElementById('input-location').value = '';
+			document.getElementById('input-info').value = '';
+			currentImage = null;
+			document.getElementById('preview-container').style.display = 'none';
+
+			entries = await idb.getAll('entries');
+			updateUI();
+		} catch (err) {
+			console.error('Speichern fehlgeschlagen:', err);
+			alert("Speichern fehlgeschlagen – vermutlich GPS/Permission oder ein interner Fehler.");
+		} finally {
+			btn.disabled = false;
+			btn.innerText = "📍 Speichern";
+		}
+	}
 
     async function createThumb(base64) {
         return new Promise(r => {
