@@ -183,6 +183,30 @@
 			border-bottom: 1px solid #eee;
 			background: #fff;
 		}
+
+		.history-actions {
+			margin-left: auto;
+			display: flex;
+			align-items: center;
+			gap: 6px;
+		}
+		
+		.delete-btn { 
+			flex: 0 0 auto; 
+			width: 36px; 
+			height: 36px; 
+			border: none; 
+			border-radius: 50%; 
+			background: #f3dede; 
+			color: var(--danger); 
+			font-size: 1.1rem; 
+			font-weight: bold; 
+			cursor: pointer; 
+			display: flex; 
+			align-items: center; 
+			justify-content: center; 
+		}
+
 		.history-info {
 			flex: 1;
 			display: flex;
@@ -1691,6 +1715,51 @@
             r.readAsDataURL(input.files[0]);
         }
     }
+	
+	async function deleteEntryByGroup(name) {
+		const groupName = name.trim();
+		if (!groupName) return;
+		if (!confirm(`"${groupName}" wirklich löschen?`)) return;
+
+		const allEntries = await idb.getAll('entries');
+		const toDelete = allEntries.filter(e => e.name === groupName);
+		if (!toDelete.length) return;
+
+		const photoIdsToCheck = new Set(toDelete.map(e => e.photoId).filter(Boolean));
+		const remainingEntries = allEntries.filter(e => e.name !== groupName);
+
+		for (const entry of toDelete) {
+			await idb.del('entries', entry.id);
+		}
+
+		const remainingPhotoRefs = new Set(remainingEntries.map(e => e.photoId).filter(Boolean));
+		for (const photoId of photoIdsToCheck) {
+			if (!remainingPhotoRefs.has(photoId)) {
+				await idb.del('photos', photoId);
+			}
+		}
+
+		entries = await idb.getAll('entries');
+		updateUI();
+	}
+
+	async function deleteEntryById(entryId) {
+		if (!confirm('Diesen Eintrag wirklich löschen?')) return;
+
+		const allEntries = await idb.getAll('entries');
+		const entry = allEntries.find(e => e.id === entryId);
+		if (!entry) return;
+
+		await idb.del('entries', entryId);
+
+		const stillUsed = (await idb.getAll('entries')).some(e => e.photoId && e.photoId === entry.photoId);
+		if (entry.photoId && !stillUsed) {
+			await idb.del('photos', entry.photoId);
+		}
+
+		entries = await idb.getAll('entries');
+		updateUI();
+	}
 
     async function saveEntry() {
 		const name = document.getElementById('input-name').value.trim();
@@ -2047,7 +2116,10 @@
 					<small>📅 ${dateStr}</small>
 					${e.info ? `<p>${e.info}</p>` : ''}
 				</div>
-				<button class="pin-btn" onclick="jumpTo(${e.lat}, ${e.lng})">📍</button>
+				<div class="history-actions">
+					<button class="pin-btn" onclick="jumpTo(${e.lat}, ${e.lng})">📍</button>
+					<button class="delete-btn" title="Löschen" onclick="event.stopPropagation(); deleteEntryById('${e.id}')">×</button>
+				</div>
 			`;
 			hist.appendChild(item);
 
